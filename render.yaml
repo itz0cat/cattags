@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install --include=dev && npm run build --workspace=shared && npm run build --workspace=backend
+    buildCommand: npm install --include=dev && npm run build --workspace=shared && npm run build --workspace=web && npm run build --workspace=backend
     startCommand: node backend/dist/index.js
     healthCheckPath: /api/v1/health
     envVars:

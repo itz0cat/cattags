@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import fs from 'fs';
 
 import healthRoutes from './routes/health';
 import configRoutes from './routes/config';
@@ -63,6 +64,29 @@ export function createApp() {
   app.use('/api/v1/players', playerRoutes);
   app.use('/api/v1/teams', teamRoutes);
   app.use('/api/v1/auth', authRoutes);
+
+  // Serve web dashboard frontend if built
+  const possibleWebDist = [
+    path.join(__dirname, '..', '..', 'web', 'dist'),
+    path.join(process.cwd(), 'web', 'dist')
+  ];
+  let webDistDir = '';
+  for (const p of possibleWebDist) {
+    if (fs.existsSync(p)) {
+      webDistDir = p;
+      break;
+    }
+  }
+
+  if (webDistDir) {
+    app.use(express.static(webDistDir));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+        return next();
+      }
+      res.sendFile(path.join(webDistDir, 'index.html'));
+    });
+  }
 
   // 404 handler
   app.use((_req, res) => {
