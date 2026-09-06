@@ -10,7 +10,7 @@ interface TeamDetailPageProps {
 }
 
 export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, onNavigate }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'appearance' | 'members' | 'verify' | 'settings'>('appearance');
+  const [activeSubTab, setActiveSubTab] = useState<'appearance' | 'members'>('appearance');
   const [team, setTeam] = useState<any>(null);
   const [prefix, setPrefix] = useState('');
   const [styleType, setStyleType] = useState<'SOLID' | 'GRADIENT' | 'RAINBOW'>('SOLID');
@@ -25,10 +25,8 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
   const [newMemberName, setNewMemberName] = useState('');
   const [memberRole, setMemberRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
 
-  // Verification state
-  const [verifyUsername, setVerifyUsername] = useState('');
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Verification state per member
+  const [memberCodes, setMemberCodes] = useState<Record<string, { code: string; command: string; copied?: boolean; loading?: boolean }>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -165,8 +163,11 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
     }
   };
 
-  const handleGenerateVerification = async () => {
-    if (!verifyUsername) return;
+  const handleGenerateMemberCode = async (username: string) => {
+    setMemberCodes(prev => ({
+      ...prev,
+      [username]: { code: '', command: '', loading: true }
+    }));
     try {
       const token = localStorage.getItem('cattags_token');
       const res = await fetch(`/api/v1/teams/${teamId}/verify`, {
@@ -175,14 +176,43 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ minecraftUsername: verifyUsername })
+        body: JSON.stringify({ minecraftUsername: username })
       });
       const data = await res.json();
-      setGeneratedCode(data.command || `/team verify ${data.code}`);
+      setMemberCodes(prev => ({
+        ...prev,
+        [username]: {
+          code: data.code,
+          command: data.command || `/team verify ${data.code}`,
+          loading: false
+        }
+      }));
     } catch {
       const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
-      setGeneratedCode(`/team verify ${prefix}-${randomChars}`);
+      const code = `${prefix || 'TAG'}-${randomChars}`;
+      setMemberCodes(prev => ({
+        ...prev,
+        [username]: {
+          code,
+          command: `/team verify ${code}`,
+          loading: false
+        }
+      }));
     }
+  };
+
+  const handleCopyCode = (username: string, command: string) => {
+    navigator.clipboard.writeText(command);
+    setMemberCodes(prev => ({
+      ...prev,
+      [username]: { ...prev[username], copied: true }
+    }));
+    setTimeout(() => {
+      setMemberCodes(prev => ({
+        ...prev,
+        [username]: { ...prev[username], copied: false }
+      }));
+    }, 2000);
   };
 
   const currentPreviewStyle: TeamStyle = {
@@ -251,18 +281,7 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Members ({team.members?.length || 0})</span>
-        </button>
-        <button
-          onClick={() => setActiveSubTab('verify')}
-          className={`flex items-center space-x-2 pb-3 text-sm font-medium border-b-2 transition-colors ${
-            activeSubTab === 'verify'
-              ? 'border-[#3B82F6] text-[#3B82F6]'
-              : 'border-transparent text-[#9CA3AF] hover:text-[#F9FAFB]'
-          }`}
-        >
-          <Key className="w-4 h-4" />
-          <span>In-Game Verification</span>
+          <span>Members & Roster ({team.members?.length || 0})</span>
         </button>
       </div>
 
@@ -407,6 +426,20 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
       {/* Subtab: Members */}
       {activeSubTab === 'members' && (
         <div className="space-y-6">
+          {/* Informational Banner */}
+          <div className="rounded-xl border border-[#1F2937] bg-[#111827] p-5 flex items-start space-x-4">
+            <div className="p-2.5 rounded-lg bg-[#3B82F6]/10 text-[#3B82F6] shrink-0 mt-0.5">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-[#F9FAFB]">How Roster & Verification Work</h4>
+              <p className="text-xs text-[#9CA3AF] leading-relaxed">
+                Add any player by their Minecraft username below to give them your team tag in-game. On cracked or offline servers, click <span className="text-[#60A5FA] font-medium">Verify Code</span> next to their name so they can run <code className="px-1.5 py-0.5 rounded bg-[#080B12] text-[#60A5FA] font-mono">/team verify &lt;code&gt;</code> in-game to permanently prove their identity against impostors.
+              </p>
+            </div>
+          </div>
+
+          {/* Add Member Form */}
           <div className="rounded-xl border border-[#1F2937] bg-[#111827] p-6">
             <h3 className="text-lg font-bold text-[#F9FAFB] mb-4">Add Team Member</h3>
             <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row gap-3">
@@ -430,97 +463,97 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
                 className="flex items-center justify-center space-x-1 px-5 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add</span>
+                <span>Add Member</span>
               </button>
             </form>
           </div>
 
           {/* Members Table */}
           <div className="rounded-xl border border-[#1F2937] bg-[#111827] overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#1F2937]">
+            <div className="px-6 py-4 border-b border-[#1F2937] flex items-center justify-between">
               <h3 className="font-bold text-[#F9FAFB]">Current Team Roster</h3>
+              <span className="text-xs text-[#9CA3AF] font-mono">
+                {team.members?.length || 0} registered
+              </span>
             </div>
             <div className="divide-y divide-[#1F2937]">
-              {team.members?.map((m: any) => (
-                <div key={m.id} className="px-6 py-3.5 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="font-semibold text-sm text-[#F9FAFB]">{m.minecraftUsername}</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded bg-[#172033] border border-[#1F2937] text-[#9CA3AF]">
-                      {m.role}
-                    </span>
-                    {m.verified && (
-                      <span className="text-[11px] px-2 py-0.5 rounded bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20">
-                        Verified
-                      </span>
+              {team.members?.map((m: any) => {
+                const codeInfo = memberCodes[m.minecraftUsername];
+                return (
+                  <div key={m.id} className="p-4 sm:px-6 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="font-semibold text-sm text-[#F9FAFB]">{m.minecraftUsername}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded bg-[#172033] border border-[#1F2937] text-[#9CA3AF]">
+                          {m.role}
+                        </span>
+                        {m.verified ? (
+                          <span className="inline-flex items-center space-x-1 text-[11px] px-2 py-0.5 rounded bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20 font-medium">
+                            <Check className="w-3 h-3" />
+                            <span>Verified</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] px-2 py-0.5 rounded bg-[#EAB308]/10 text-[#FACC15] border border-[#EAB308]/20">
+                            Pending Verify
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {!m.verified && (
+                          <button
+                            onClick={() => handleGenerateMemberCode(m.minecraftUsername)}
+                            disabled={codeInfo?.loading}
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#172033] hover:bg-[#1E293B] border border-[#1F2937] hover:border-[#3B82F6] text-xs font-medium text-[#60A5FA] transition-all"
+                            title="Generate in-game verification code"
+                          >
+                            <Key className="w-3.5 h-3.5" />
+                            <span>{codeInfo?.loading ? 'Generating...' : codeInfo?.code ? 'New Code' : 'Verify Code'}</span>
+                          </button>
+                        )}
+                        {m.role !== 'OWNER' && (
+                          <button
+                            onClick={() => handleRemoveMember(m.id)}
+                            className="p-1.5 rounded hover:bg-[#1F2937] text-[#EF4444] transition-colors"
+                            title="Remove Member"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Inline Verification Box */}
+                    {codeInfo?.command && (
+                      <div className="p-3.5 rounded-lg bg-[#080B12] border border-[#1F2937] space-y-2">
+                        <div className="flex items-center justify-between text-xs text-[#9CA3AF]">
+                          <span>
+                            Have <strong className="text-[#F9FAFB]">{m.minecraftUsername}</strong> run this command on an active Minecraft server (valid for 15 mins):
+                          </span>
+                          {codeInfo.copied && (
+                            <span className="text-[#22C55E] text-[11px] font-medium flex items-center space-x-1">
+                              <Check className="w-3 h-3" />
+                              <span>Copied!</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between font-mono text-xs sm:text-sm bg-[#111827] px-3.5 py-2.5 rounded border border-[#1F2937]">
+                          <span className="text-[#60A5FA] select-all break-all">{codeInfo.command}</span>
+                          <button
+                            onClick={() => handleCopyCode(m.minecraftUsername, codeInfo.command)}
+                            className="p-1.5 ml-2 rounded hover:bg-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB] shrink-0"
+                            title="Copy Command"
+                          >
+                            {codeInfo.copied ? <Check className="w-4 h-4 text-[#22C55E]" /> : <Copy className="w-4 h-4 text-[#9CA3AF]" />}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                  {m.role !== 'OWNER' && (
-                    <button
-                      onClick={() => handleRemoveMember(m.id)}
-                      className="p-1.5 rounded hover:bg-[#1F2937] text-[#EF4444] transition-colors"
-                      title="Remove Member"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Subtab: Verification */}
-      {activeSubTab === 'verify' && (
-        <div className="max-w-2xl mx-auto rounded-xl border border-[#1F2937] bg-[#111827] p-6 sm:p-8 space-y-6">
-          <div className="flex items-center space-x-3">
-            <Key className="w-6 h-6 text-[#3B82F6]" />
-            <h3 className="text-xl font-bold text-[#F9FAFB]">Cracked / Offline Verification</h3>
-          </div>
-
-          <p className="text-sm text-[#9CA3AF] leading-relaxed">
-            Since cracked and offline servers cannot verify identity via Microsoft OAuth, CatTags provides a secure in-game verification code workflow.
-          </p>
-
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Target Minecraft Username</label>
-              <input
-                type="text"
-                placeholder="e.g. Steve"
-                value={verifyUsername}
-                onChange={e => setVerifyUsername(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
-              />
-            </div>
-
-            <button
-              onClick={handleGenerateVerification}
-              className="px-5 py-2.5 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors"
-            >
-              Generate Verification Code
-            </button>
-          </div>
-
-          {generatedCode && (
-            <div className="p-4 rounded-lg bg-[#080B12] border border-[#1F2937] space-y-2">
-              <span className="text-xs text-[#9CA3AF]">Run this command in-game to verify your identity:</span>
-              <div className="flex items-center justify-between font-mono text-sm bg-[#111827] p-3 rounded border border-[#1F2937]">
-                <span className="text-[#60A5FA]">{generatedCode}</span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedCode);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  className="p-1.5 rounded hover:bg-[#1F2937] text-[#9CA3AF] hover:text-[#F9FAFB]"
-                  title="Copy Command"
-                >
-                  {copied ? <Check className="w-4 h-4 text-[#22C55E]" /> : <Copy className="w-4 h-4 text-[#9CA3AF]" />}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
