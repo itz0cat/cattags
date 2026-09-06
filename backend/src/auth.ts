@@ -35,10 +35,10 @@ function getDatabaseOption() {
 export const auth = betterAuth({
   database: getDatabaseOption(),
   secret: authSecret || 'test-secret-key-32-chars-long-testing!',
-  baseURL: process.env.BETTER_AUTH_URL || process.env.API_BASE_URL || 'http://localhost:8080',
+  baseURL: process.env.BETTER_AUTH_URL || process.env.API_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:8080',
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true
+    requireEmailVerification: false
   },
   emailVerification: {
     sendOnSignUp: true,

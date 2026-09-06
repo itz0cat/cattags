@@ -18,6 +18,8 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
   const [isGradient, setIsGradient] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -31,8 +33,11 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
     if (!name || !prefix || !slug) {
-      alert('Please fill out all required fields');
+      setError('Please fill out all required fields');
       return;
     }
 
@@ -72,10 +77,12 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
       }
 
       const data = await res.json();
-      alert('Team created successfully!');
-      onNavigate('team-detail', data.team.id);
+      setSuccessMessage('Team identity registered successfully! Redirecting...');
+      setTimeout(() => {
+        onNavigate('team-detail', data.team.id);
+      }, 1000);
     } catch (err: any) {
-      alert(err.message || 'Error creating team');
+      setError(err.message || 'Error creating team');
     } finally {
       setLoading(false);
     }
@@ -105,6 +112,19 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
           Create an official Minecraft team identity recognized across the community
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30 text-xs text-[#EF4444] flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="underline hover:no-underline ml-2">Dismiss</button>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="p-4 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/30 text-xs text-[#22C55E]">
+          {successMessage}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <form onSubmit={handleCreate} className="space-y-4">

@@ -21,6 +21,7 @@ export function createApp() {
   }
 
   const app = express();
+  app.set('trust proxy', 1);
 
   // Security headers
   app.use(helmet({
@@ -48,6 +49,7 @@ export function createApp() {
     max: process.env.NODE_ENV === 'test' ? 10000 : 300,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     message: { error: 'Too many requests, please try again later.' }
   });
   app.use('/api/', limiter);

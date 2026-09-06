@@ -15,6 +15,7 @@ const authLimiter = rateLimit({
   max: process.env.NODE_ENV === 'test' ? 1000 : 10,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' }
 });
 
