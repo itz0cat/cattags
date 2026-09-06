@@ -129,31 +129,31 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Team Name *</label>
+            <label className="block text-xs font-medium text-[#9CA3AF] mb-1.5">Team Name *</label>
             <input
               type="text"
               required
               value={name}
               onChange={e => handleNameChange(e.target.value)}
               placeholder="e.g. Nova Esports"
-              className="w-full px-3.5 py-2 rounded-lg bg-[#111827] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#111827] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] placeholder:text-[#6B7280] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none transition-colors"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[#9CA3AF] mb-1">URL Slug *</label>
+              <label className="block text-xs font-medium text-[#9CA3AF] mb-1.5">URL Slug *</label>
               <input
                 type="text"
                 required
                 value={slug}
                 onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
                 placeholder="nova"
-                className="w-full px-3.5 py-2 rounded-lg bg-[#111827] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none font-mono"
+                className="w-full px-3.5 py-2.5 rounded-lg bg-[#111827] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] placeholder:text-[#6B7280] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none font-mono transition-colors"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Prefix (Max 10) *</label>
+              <label className="block text-xs font-medium text-[#9CA3AF] mb-1.5">Prefix (Max 10) *</label>
               <input
                 type="text"
                 required
@@ -161,19 +161,19 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
                 value={prefix}
                 onChange={e => setPrefix(e.target.value.toUpperCase())}
                 placeholder="NOVA"
-                className="w-full px-3.5 py-2 rounded-lg bg-[#111827] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none font-mono uppercase"
+                className="w-full px-3.5 py-2.5 rounded-lg bg-[#111827] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] placeholder:text-[#6B7280] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none font-mono uppercase transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Description</label>
+            <label className="block text-xs font-medium text-[#9CA3AF] mb-1.5">Description</label>
             <textarea
               rows={2}
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Brief overview of your team..."
-              className="w-full px-3.5 py-2 rounded-lg bg-[#111827] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#111827] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] placeholder:text-[#6B7280] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none transition-colors"
             />
           </div>
 

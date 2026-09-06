@@ -65,7 +65,7 @@ export async function sendVerificationEmail({ email, url, token }: SendVerificat
         Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM || 'CatTags <verify@cattags.xyz>',
+        from: process.env.EMAIL_FROM || 'CatTags <onboarding@resend.dev>',
         to: email,
         subject: 'Verify your CatTags account',
         html

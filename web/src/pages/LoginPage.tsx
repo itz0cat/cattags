@@ -53,24 +53,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Email</label>
+            <label className="block text-xs font-medium text-[#9CA3AF] mb-1.5">Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#080B12] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Password</label>
+            <label className="block text-xs font-medium text-[#9CA3AF] mb-1.5">Password</label>
             <input
               type="password"
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#080B12] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none transition-colors"
             />
           </div>
 
@@ -79,7 +79,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors flex items-center justify-center space-x-2"
+            className="w-full min-h-[44px] py-2.5 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] active:bg-[#1E40AF] text-white font-medium text-sm transition-colors flex items-center justify-center space-x-2 focus:ring-2 focus:ring-[#3B82F6]/50 focus:outline-none disabled:opacity-60"
           >
             <LogIn className="w-4 h-4" />
             <span>{loading ? 'Signing in...' : 'Sign In'}</span>

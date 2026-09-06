@@ -1,0 +1,26 @@
+The web dashboard's routing is broken/incomplete. Symptoms:
+- The browser URL never changes when navigating between sections (Dashboard,
+  Teams, etc.) — it stays static regardless of which "page" is shown.
+- Visiting a random/unknown path (e.g. /sjaofaj) does not show a 404 — it
+  just serves the same content as the root.
+- No visible login/register flow or authentication gate when opening the
+  site fresh — should redirect to /login if not authenticated.
+
+Please:
+1. Check whether react-router-dom (or whatever router is in package.json)
+   is actually installed and wired up in App.tsx/main.tsx, using real
+   <Route> components and <Link>/useNavigate for navigation — not just
+   local state swapping components.
+2. Ensure the URL bar actually updates on navigation (e.g. /teams,
+   /dashboard, /login) and browser back/forward buttons work correctly.
+3. Add a proper catch-all 404 page for unmatched routes.
+4. Add a protected-route wrapper: unauthenticated users hitting any
+   dashboard route should redirect to /login. Authenticated users hitting
+   /login or /register should redirect to /dashboard.
+5. Confirm the login/register pages (with Turnstile) are actually reachable
+   and rendering, not just present as unused files.
+6. Test by manually visiting each route directly (not just via in-app nav)
+   and confirming the correct page loads, and an invalid route shows the
+   404 page.
+
+Give a concise summary of what was actually broken and what you fixed.

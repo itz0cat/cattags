@@ -25,7 +25,19 @@ export function createApp() {
 
   // Security headers
   app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' }
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://challenges.cloudflare.com'],
+        frameSrc: ["'self'", 'https://challenges.cloudflare.com'],
+        connectSrc: ["'self'", 'https://challenges.cloudflare.com'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        objectSrc: ["'none'"]
+      }
+    }
   }));
 
   // CORS

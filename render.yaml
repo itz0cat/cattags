@@ -20,6 +20,14 @@ services:
         fromDatabase:
           name: cattags-db
           property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: CatTags <onboarding@resend.dev>
+      - key: TURNSTILE_SECRET_KEY
+        value: 1x0000000000000000000000000000000AA
+      - key: BETTER_AUTH_URL
+        value: https://cattags-api.onrender.com
 
 databases:
   - name: cattags-db

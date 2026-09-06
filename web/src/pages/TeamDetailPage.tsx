@@ -379,7 +379,7 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
                   maxLength={10}
                   value={prefix}
                   onChange={e => setPrefix(e.target.value.toUpperCase())}
-                  className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none uppercase font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-[#080B12] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none uppercase font-mono transition-colors"
                 />
               </div>
 
@@ -572,19 +572,19 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
                   placeholder="Minecraft Username (e.g. Steve)"
                   value={newMemberName}
                   onChange={e => setNewMemberName(e.target.value)}
-                  className="flex-1 px-4 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#080B12] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] placeholder:text-[#6B7280] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none transition-colors"
                 />
                 <select
                   value={memberRole}
                   onChange={e => setMemberRole(e.target.value as any)}
-                  className="px-4 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+                  className="px-4 py-2.5 rounded-lg bg-[#080B12] border border-[#1F2937] text-base sm:text-sm text-[#F9FAFB] focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] focus:outline-none transition-colors"
                 >
                   <option value="MEMBER">Member</option>
                   <option value="ADMIN">Admin</option>
                 </select>
                 <button
                   type="submit"
-                  className="flex items-center justify-center space-x-1 px-5 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors"
+                  className="flex items-center justify-center space-x-1 px-5 py-2.5 min-h-[44px] rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors focus:ring-2 focus:ring-[#3B82F6]/50 focus:outline-none"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Member</span>
