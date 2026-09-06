@@ -1,0 +1,356 @@
+import { Router, Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { getDatabase } from '../db/database';
+import { authenticate, AuthRequest, optionalAuth } from '../middleware/auth';
+import { getStorageProvider } from '../storage';
+import { Team, TeamMember, TeamRole, LIMITS } from '@cattags/shared';
+
+const router = Router();
+
+// GET /api/v1/teams - List teams
+router.get('/', async (req: Request, res: Response) => {
+  const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 100);
+  const offset = parseInt(req.query.offset as string, 10) || 0;
+  const search = (req.query.search as string) || '';
+
+  const db = getDatabase();
+  const { teams, total } = await db.listTeams(limit, offset, search);
+
+  res.json({
+    teams,
+    total,
+    limit,
+    offset
+  });
+});
+
+// GET /api/v1/teams/by-player/:identifier - Resolve team for a single player
+router.get('/by-player/:identifier', async (req: Request, res: Response) => {
+  const identifier = req.params.identifier.trim();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+
+  const db = getDatabase();
+  const results = await db.resolvePlayers([
+    isUuid ? { username: '', uuid: identifier } : { username: identifier }
+  ]);
+
+  if (results.length > 0 && results[0].team) {
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    return res.json({ player: results[0] });
+  }
+
+  res.status(404).json({ error: 'Player is not registered with any team' });
+});
+
+// GET /api/v1/teams/:id - Get team details
+router.get('/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const db = getDatabase();
+  let team = await db.findTeamById(id);
+  if (!team) {
+    team = await db.findTeamBySlug(id);
+  }
+
+  if (!team) {
+    return res.status(404).json({ error: 'Team not found' });
+  }
+
+  // ETag header based on team version
+  const etag = `"team-${team.id}-v${team.version}"`;
+  res.setHeader('ETag', etag);
+
+  if (req.headers['if-none-match'] === etag) {
+    return res.status(304).end();
+  }
+
+  res.json({ team });
+});
+
+// POST /api/v1/teams - Create a team
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
+  const {
+    name,
+    slug,
+    shortName,
+    prefix,
+    description,
+    primaryColor,
+    secondaryColor,
+    gradientEnabled,
+    gradientDirection,
+    style
+  } = req.body;
+
+  if (!name || !prefix || !slug) {
+    return res.status(400).json({ error: 'name, prefix, and slug are required' });
+  }
+
+  if (prefix.length > LIMITS.maxPrefixLength) {
+    return res.status(400).json({ error: `Prefix cannot exceed ${LIMITS.maxPrefixLength} characters` });
+  }
+
+  const normalizedSlug = slug.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
+  const db = getDatabase();
+
+  const existingSlug = await db.findTeamBySlug(normalizedSlug);
+  if (existingSlug) {
+    return res.status(409).json({ error: 'A team with this slug already exists' });
+  }
+
+  const now = new Date().toISOString();
+  const teamId = 'team_' + uuidv4().replace(/-/g, '').slice(0, 12);
+
+  const newTeam: Team = {
+    id: teamId,
+    slug: normalizedSlug,
+    name: name.trim(),
+    shortName: shortName ? shortName.trim() : undefined,
+    prefix: prefix.trim(),
+    description: description ? description.trim() : '',
+    logoUrl: null,
+    primaryColor: primaryColor || '#3B82F6',
+    secondaryColor: secondaryColor || null,
+    gradientEnabled: !!gradientEnabled,
+    gradientDirection: gradientDirection || 'LEFT_TO_RIGHT',
+    style: style || {
+      type: gradientEnabled ? 'GRADIENT' : 'SOLID',
+      colors: secondaryColor ? [primaryColor || '#3B82F6', secondaryColor] : [primaryColor || '#3B82F6'],
+      direction: gradientDirection || 'LEFT_TO_RIGHT',
+      bold: true,
+      italic: false
+    },
+    verified: false,
+    status: 'ACTIVE',
+    ownerId: req.user!.id,
+    version: 1,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  await db.createTeam(newTeam);
+
+  // Automatically add the creator as OWNER member if they have a minecraft_username
+  const user = await db.findUserById(req.user!.id);
+  if (user && user.minecraft_username) {
+    const ownerMember: TeamMember = {
+      id: 'mem_' + uuidv4().slice(0, 10),
+      teamId,
+      minecraftUsername: user.minecraft_username,
+      identifierType: 'CRACKED_USERNAME',
+      role: 'OWNER',
+      verified: true,
+      createdAt: now,
+      updatedAt: now
+    };
+    await db.addTeamMember(ownerMember);
+    newTeam.members = [ownerMember];
+  }
+
+  await db.createAuditLog({
+    id: uuidv4(),
+    userId: req.user!.id,
+    teamId,
+    action: 'TEAM_CREATED',
+    details: { name: newTeam.name, slug: newTeam.slug },
+    ipAddress: req.ip
+  });
+
+  res.status(201).json({ team: newTeam });
+});
+
+// PATCH /api/v1/teams/:id - Update team
+router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+
+  if (!team) {
+    return res.status(404).json({ error: 'Team not found' });
+  }
+
+  if (team.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Only the team owner can edit team settings' });
+  }
+
+  const allowedUpdates: Partial<Team> = {};
+  if (req.body.name) allowedUpdates.name = req.body.name.trim();
+  if (req.body.prefix) allowedUpdates.prefix = req.body.prefix.trim();
+  if (req.body.description !== undefined) allowedUpdates.description = req.body.description;
+  if (req.body.primaryColor) allowedUpdates.primaryColor = req.body.primaryColor;
+  if (req.body.secondaryColor !== undefined) allowedUpdates.secondaryColor = req.body.secondaryColor;
+  if (req.body.gradientEnabled !== undefined) allowedUpdates.gradientEnabled = req.body.gradientEnabled;
+  if (req.body.gradientDirection) allowedUpdates.gradientDirection = req.body.gradientDirection;
+  if (req.body.style) allowedUpdates.style = req.body.style;
+
+  const updated = await db.updateTeam(id, allowedUpdates);
+
+  await db.createAuditLog({
+    id: uuidv4(),
+    userId: req.user!.id,
+    teamId: id,
+    action: 'TEAM_UPDATED',
+    details: allowedUpdates,
+    ipAddress: req.ip
+  });
+
+  res.json({ team: updated });
+});
+
+// DELETE /api/v1/teams/:id - Delete team
+router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+
+  if (!team) {
+    return res.status(404).json({ error: 'Team not found' });
+  }
+
+  if (team.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Only the team owner can delete this team' });
+  }
+
+  await db.deleteTeam(id);
+
+  await db.createAuditLog({
+    id: uuidv4(),
+    userId: req.user!.id,
+    teamId: id,
+    action: 'TEAM_DELETED',
+    details: { name: team.name },
+    ipAddress: req.ip
+  });
+
+  res.json({ success: true, message: 'Team deleted' });
+});
+
+// POST /api/v1/teams/:id/members - Add member
+router.post('/:id/members', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { minecraftUsername, minecraftUuid, role } = req.body;
+
+  if (!minecraftUsername || typeof minecraftUsername !== 'string') {
+    return res.status(400).json({ error: 'minecraftUsername is required' });
+  }
+
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+
+  if (!team) {
+    return res.status(404).json({ error: 'Team not found' });
+  }
+
+  if (team.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Only the team owner or admin can add members' });
+  }
+
+  const now = new Date().toISOString();
+  const member: TeamMember = {
+    id: 'mem_' + uuidv4().slice(0, 10),
+    teamId: id,
+    minecraftUsername: minecraftUsername.trim(),
+    minecraftUuid: minecraftUuid ? minecraftUuid.trim() : null,
+    identifierType: minecraftUuid ? 'MOJANG_UUID' : 'CRACKED_USERNAME',
+    role: (role as TeamRole) || 'MEMBER',
+    verified: false,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  await db.addTeamMember(member);
+
+  res.status(201).json({ member });
+});
+
+// DELETE /api/v1/teams/:id/members/:memberId - Remove member
+router.delete('/:id/members/:memberId', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id, memberId } = req.params;
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+
+  if (!team) {
+    return res.status(404).json({ error: 'Team not found' });
+  }
+
+  if (team.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Only team admins can remove members' });
+  }
+
+  const removed = await db.removeTeamMember(id, memberId);
+  if (!removed) {
+    return res.status(404).json({ error: 'Member not found' });
+  }
+
+  res.json({ success: true });
+});
+
+// POST /api/v1/teams/:id/verify - Generate verification token for in-game cracked/offline verification
+router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { minecraftUsername } = req.body;
+
+  if (!minecraftUsername) {
+    return res.status(400).json({ error: 'minecraftUsername is required' });
+  }
+
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  // Generate a random code, e.g. NOVA-7K29
+  const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const code = `${team.prefix.toUpperCase()}-${randomChars}`;
+
+  const token = {
+    id: uuidv4(),
+    teamId: id,
+    minecraftUsername: minecraftUsername.trim(),
+    code,
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 mins
+    used: false
+  };
+
+  await db.createVerificationToken(token);
+
+  res.json({
+    code,
+    command: `/team verify ${code}`,
+    expiresInSeconds: 900,
+    instructions: 'Run this command on a verified CatTags server to confirm identity.'
+  });
+});
+
+// POST /api/v1/teams/:id/logo - Upload logo image
+router.post('/:id/logo', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { base64Data, contentType, fileName } = req.body;
+
+  if (!base64Data || !contentType) {
+    return res.status(400).json({ error: 'base64Data and contentType are required' });
+  }
+
+  const allowedTypes = ['image/png', 'image/webp'];
+  if (!allowedTypes.includes(contentType)) {
+    return res.status(400).json({ error: 'Only PNG and WebP images are allowed' });
+  }
+
+  const buffer = Buffer.from(base64Data, 'base64');
+  if (buffer.length > LIMITS.maxLogoSizeBytes) {
+    return res.status(400).json({ error: `Image size exceeds ${LIMITS.maxLogoSizeBytes / 1024}KB limit` });
+  }
+
+  const storage = getStorageProvider();
+  const uploadName = `logo_${id}_${Date.now()}.${contentType === 'image/webp' ? 'webp' : 'png'}`;
+  const uploadResult = await storage.upload(uploadName, buffer, contentType);
+
+  const db = getDatabase();
+  const updatedTeam = await db.updateTeam(id, { logoUrl: uploadResult.url });
+
+  res.json({
+    success: true,
+    logoUrl: uploadResult.url,
+    team: updatedTeam
+  });
+});
+
+export default router;

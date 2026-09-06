@@ -1,0 +1,49 @@
+# Environment and credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Java & Gradle
+.gradle/
+build/
+bin/
+out/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Fabric / Loom
+.fabric/
+run/
+runClient/
+runServer/
+runData/
+remapped/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+.next/
+.turbo/
+
+# IDE / Editor
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs and Caches
+logs/
+*.log
+.cache/
+cache/
+tmp/

@@ -1,0 +1,111 @@
+import React, { useState } from 'react';
+import { UserPlus } from 'lucide-react';
+
+interface RegisterPageProps {
+  onRegisterSuccess: (user: any, token: string) => void;
+  onNavigate: (tab: string) => void;
+}
+
+export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onNavigate }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [minecraftUsername, setMinecraftUsername] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, minecraftUsername })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+      onRegisterSuccess(data.user, data.token);
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto px-4 py-16">
+      <div className="rounded-xl border border-[#1F2937] bg-[#111827] p-8 space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-[#F9FAFB]">Create an Account</h2>
+          <p className="text-sm text-[#9CA3AF] mt-1">Start managing your team identity</p>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/20 text-xs text-[#EF4444]">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Minecraft Username</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Steve"
+              value={minecraftUsername}
+              onChange={e => setMinecraftUsername(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[#9CA3AF] mb-1">Password (min. 8 characters)</label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors flex items-center justify-center space-x-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
+          </button>
+        </form>
+
+        <div className="text-center text-xs text-[#9CA3AF]">
+          Already have an account?{' '}
+          <button
+            onClick={() => onNavigate('login')}
+            className="text-[#3B82F6] hover:text-[#60A5FA] font-medium"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

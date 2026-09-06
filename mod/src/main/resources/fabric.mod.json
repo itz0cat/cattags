@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "cattags",
+  "version": "${version}",
+  "name": "CatTags",
+  "description": "Team identity, everywhere. Persistent team identity, nametag prefix, and styling system for Minecraft communities.",
+  "authors": [
+    "ItzCat"
+  ],
+  "contact": {
+    "homepage": "https://cattags.xyz",
+    "sources": "https://github.com/itz0cat/cattags",
+    "issues": "https://github.com/itz0cat/cattags/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/cattags/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.itzcat.cattags.CatTags"
+    ],
+    "client": [
+      "com.itzcat.cattags.client.CatTagsClient"
+    ]
+  },
+  "mixins": [
+    "cattags.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.11",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

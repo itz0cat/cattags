@@ -1,0 +1,15 @@
+{
+  "cattags.name": "CatTags",
+  "cattags.description": "Team identity, everywhere.",
+  "cattags.config.title": "CatTags Configuration",
+  "cattags.config.general": "General Settings",
+  "cattags.config.enabled": "Enable Mod",
+  "cattags.config.backend_url": "Backend API URL",
+  "cattags.config.nametags": "Nametag Tags",
+  "cattags.config.tablist": "Tab List Tags",
+  "cattags.config.chat": "Chat Message Tags",
+  "cattags.config.show_logos": "Show Team Logos",
+  "cattags.command.status": "CatTags Status: %s (%d teams cached)",
+  "cattags.command.reload": "CatTags cache reloaded successfully.",
+  "cattags.command.cleared": "CatTags local cache cleared."
+}

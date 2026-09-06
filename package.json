@@ -1,0 +1,24 @@
+{
+  "name": "cattags-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CatTags — Team identity, everywhere. Monorepo for Minecraft Fabric mod, REST API backend, and web dashboard.",
+  "workspaces": [
+    "shared",
+    "backend",
+    "web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "keywords": [
+    "cattags",
+    "minecraft",
+    "fabric-mod",
+    "team-tags"
+  ],
+  "author": "ItzCat",
+  "license": "MIT"
+}
