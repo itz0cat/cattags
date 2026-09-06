@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserPlus } from 'lucide-react';
+import { TurnstileWidget } from '../components/TurnstileWidget';
 
 interface RegisterPageProps {
   onRegisterSuccess: (user: any, token: string) => void;
@@ -10,6 +11,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, o
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [minecraftUsername, setMinecraftUsername] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +24,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, o
       const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, minecraftUsername })
+        body: JSON.stringify({ email, password, minecraftUsername, turnstileToken })
       });
 
       const data = await res.json();
@@ -85,6 +87,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, o
               className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
             />
           </div>
+
+          <TurnstileWidget onSuccess={token => setTurnstileToken(token)} />
 
           <button
             type="submit"

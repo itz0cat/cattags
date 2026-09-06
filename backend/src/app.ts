@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
+import { toNodeHandler } from 'better-auth/node';
 
 import healthRoutes from './routes/health';
 import configRoutes from './routes/config';
@@ -11,8 +12,14 @@ import playerRoutes from './routes/players';
 import teamRoutes from './routes/teams';
 import authRoutes from './routes/auth';
 import { errorHandler } from './middleware/errorHandler';
+import { auth } from './auth';
 
 export function createApp() {
+  // Item 1: Refuse to start if JWT_SECRET is unset
+  if (!process.env.JWT_SECRET) {
+    throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start server with insecure default.');
+  }
+
   const app = express();
 
   // Security headers
@@ -25,9 +32,12 @@ export function createApp() {
   app.use(cors({
     origin: corsOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'If-None-Match'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'If-None-Match', 'cf-turnstile-response'],
     exposedHeaders: ['ETag', 'Cache-Control']
   }));
+
+  // Better Auth native route handler
+  app.all('/api/auth/*', toNodeHandler(auth));
 
   // Body parser with 2MB limit for logo upload
   app.use(express.json({ limit: '2mb' }));

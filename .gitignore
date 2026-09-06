@@ -47,3 +47,4 @@ logs/
 .cache/
 cache/
 tmp/
+backend/public/uploads/

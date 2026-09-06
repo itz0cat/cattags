@@ -96,18 +96,55 @@ Compiled mod JAR is located at: `mod/build/libs/cattags-1.0.0.jar`.
 
 ---
 
+## Environment & Security Configuration
+
+CatTags incorporates enterprise-grade security including Better Auth, Cloudflare Turnstile bot protection, Resend transactional emails, and strict rate limiting.
+
+### Required Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+| Variable | Required | Description |
+|---|---|---|
+| `JWT_SECRET` | **YES** | Minimum 32-character secret for legacy and JWT signing. The server **refuses startup** if missing. |
+| `BETTER_AUTH_SECRET` | **YES** | Secret key used by Better Auth session encryption. |
+| `BETTER_AUTH_URL` | **YES** | Root API origin (e.g. `http://localhost:8080` or `https://cattags-api.onrender.com`). |
+| `DATABASE_URL` | Production | PostgreSQL connection string (`postgresql://...`). In-memory SQLite/Memory fallback used for tests. |
+| `TURNSTILE_SECRET_KEY` | Recommended | Cloudflare Turnstile secret key for verifying CAPTCHA challenges. |
+| `VITE_TURNSTILE_SITE_KEY` | Recommended | Cloudflare Turnstile public site key embedded in the frontend forms. |
+| `RESEND_API_KEY` | Recommended | Resend API key (`re_...`) used to send verification and security emails. |
+
+#### Cloudflare Turnstile Setup
+1. Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/) and navigate to **Turnstile**.
+2. Add a new site with your domain(s) (`cattags.xyz`, `localhost`).
+3. Copy the **Site Key** to `VITE_TURNSTILE_SITE_KEY` in `web/.env` and **Secret Key** to `TURNSTILE_SECRET_KEY` in `backend/.env`.
+4. *Local Testing Keys*: Cloudflare provides dummy test keys that always pass:
+   - Sitekey: `1x00000000000000000000AA`
+   - Secret: `1x0000000000000000000000000000000AA`
+
+#### Resend Email Verification Setup
+1. Sign up at [Resend.com](https://resend.com) and create an API key with sending permissions.
+2. Verify your sending domain or use test domains in sandbox mode.
+3. Set `RESEND_API_KEY=re_...` in your server environment.
+
+---
+
 ## API Reference
 
 * `GET /api/v1/health` — Unauthenticated health check endpoint
 * `GET /api/v1/version` — API version and loader compatibility
 * `GET /api/v1/config` — System limits, allowed logo formats, and TTL
+* `POST /api/v1/auth/register` — Better Auth registration with Turnstile verification and rate limiting (10 req/15m)
+* `POST /api/v1/auth/login` — Better Auth authentication with Turnstile verification and rate limiting (10 req/15m)
 * `POST /api/v1/players/resolve` — High-efficiency batch player lookup
 * `GET /api/v1/teams` — Paginated directory of registered teams
 * `GET /api/v1/teams/:id` — Team details with ETag caching
-* `POST /api/v1/teams` — Authenticated team creation
-* `PATCH /api/v1/teams/:id` — Update team appearance, prefix, and colors
-* `POST /api/v1/teams/:id/members` — Add member to team
-* `POST /api/v1/teams/:id/verify` — Generate cracked/offline verification token
+* `POST /api/v1/teams` — Authenticated team creation (requires verified email & Turnstile)
+* `PATCH /api/v1/teams/:id` — Update team appearance, prefix, and colors (Owner/Admin only)
+* `POST /api/v1/teams/:id/logo` — Upload team logo (magic byte validated PNG/WebP, Owner/Admin only)
+* `POST /api/v1/teams/:id/members` — Add member to team (Owner/Admin only)
+* `POST /api/v1/teams/:id/verify` — Generate cracked/offline verification token (cryptographically secure hex, Owner/Admin only)
+* `POST /api/v1/teams/:id/verify/confirm` — Consume in-game verification token and verify team membership
 
 ---
 

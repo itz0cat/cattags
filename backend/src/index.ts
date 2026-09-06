@@ -1,6 +1,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Item 1: Refuse to start if JWT_SECRET is not set
+if (!process.env.JWT_SECRET) {
+  console.error('[Bootstrap] FATAL: JWT_SECRET environment variable is not set. Refusing to start server with insecure default.');
+  throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start server with insecure default.');
+}
+
 import { createApp } from './app';
 import { runMigrations } from './db/migrate';
 

@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../db/database';
 import { authenticate, AuthRequest, optionalAuth } from '../middleware/auth';
+import { verifyTurnstile } from '../middleware/turnstile';
 import { getStorageProvider } from '../storage';
 import { Team, TeamMember, TeamRole, LIMITS } from '@cattags/shared';
 
@@ -67,7 +69,11 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/v1/teams - Create a team
-router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/', authenticate, verifyTurnstile, async (req: AuthRequest, res: Response) => {
+  if (req.user && req.user.emailVerified === false) {
+    return res.status(403).json({ error: 'Please verify your email address before creating a team' });
+  }
+
   const {
     name,
     slug,
@@ -297,9 +303,14 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
   const team = await db.findTeamById(id);
   if (!team) return res.status(404).json({ error: 'Team not found' });
 
-  // Generate a random code, e.g. NOVA-7K29
-  const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const code = `${team.prefix.toUpperCase()}-${randomChars}`;
+  // IDOR check: Only owner or admin can generate verification tokens
+  if (team.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Unauthorized to generate verification codes for this team' });
+  }
+
+  // Cryptographically secure token generation with 12 hex characters (~2.81 x 10^14 combinations)
+  const secureRandomHex = crypto.randomBytes(6).toString('hex').toUpperCase();
+  const code = `${team.prefix.toUpperCase()}-${secureRandomHex}`;
 
   const token = {
     id: uuidv4(),
@@ -320,13 +331,77 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
   });
 });
 
+// POST /api/v1/teams/:id/verify/confirm - Consume in-game verification token and mark member verified
+router.post('/:id/verify/confirm', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { code } = req.body;
+
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'Verification code is required' });
+  }
+
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  const token = await db.findVerificationToken(code.trim().toUpperCase());
+  if (!token) {
+    return res.status(404).json({ error: 'Invalid verification code' });
+  }
+
+  if (token.team_id && token.team_id !== id && token.teamId !== id) {
+    return res.status(400).json({ error: 'Verification code does not belong to this team' });
+  }
+
+  if (token.used) {
+    return res.status(400).json({ error: 'Verification code has already been used' });
+  }
+
+  const expiresAt = new Date(token.expires_at || token.expiresAt);
+  if (expiresAt.getTime() < Date.now()) {
+    return res.status(400).json({ error: 'Verification code has expired' });
+  }
+
+  // Mark token used
+  await db.markVerificationTokenUsed(token.id);
+
+  // Mark matching member verified in database
+  const username = token.minecraft_username || token.minecraftUsername;
+  const memberUpdated = await db.verifyTeamMember(id, username);
+
+  // Increment team sync version and audit log
+  await db.updateTeam(id, { version: team.version + 1 });
+  await db.createAuditLog({
+    id: uuidv4(),
+    teamId: id,
+    action: 'MEMBER_VERIFIED',
+    details: { minecraftUsername: username, code: token.code }
+  });
+
+  res.json({
+    success: true,
+    message: `Player ${username} successfully verified for team ${team.name}`,
+    minecraftUsername: username,
+    memberUpdated
+  });
+});
+
 // POST /api/v1/teams/:id/logo - Upload logo image
 router.post('/:id/logo', authenticate, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const { base64Data, contentType, fileName } = req.body;
+  const { base64Data, contentType } = req.body;
 
   if (!base64Data || !contentType) {
     return res.status(400).json({ error: 'base64Data and contentType are required' });
+  }
+
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  // IDOR check: Only owner or admin can update team logo
+  if (team.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Unauthorized to update this team' });
   }
 
   const allowedTypes = ['image/png', 'image/webp'];
@@ -339,11 +414,31 @@ router.post('/:id/logo', authenticate, async (req: AuthRequest, res: Response) =
     return res.status(400).json({ error: `Image size exceeds ${LIMITS.maxLogoSizeBytes / 1024}KB limit` });
   }
 
+  // Validate real file signature (magic bytes)
+  const isPng =
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a;
+
+  const isWebp =
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP';
+
+  if (!isPng && !isWebp) {
+    return res.status(400).json({ error: 'Invalid file signature: File bytes do not match a valid PNG or WebP image' });
+  }
+
   const storage = getStorageProvider();
   const uploadName = `logo_${id}_${Date.now()}.${contentType === 'image/webp' ? 'webp' : 'png'}`;
   const uploadResult = await storage.upload(uploadName, buffer, contentType);
 
-  const db = getDatabase();
   const updatedTeam = await db.updateTeam(id, { logoUrl: uploadResult.url });
 
   res.json({

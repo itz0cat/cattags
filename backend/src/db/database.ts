@@ -20,6 +20,7 @@ export interface IDatabase {
   createVerificationToken(token: any): Promise<any>;
   findVerificationToken(code: string): Promise<any | null>;
   markVerificationTokenUsed(id: string): Promise<void>;
+  verifyTeamMember(teamId: string, minecraftUsername: string): Promise<boolean>;
   createAuditLog(entry: any): Promise<void>;
 }
 
@@ -193,6 +194,17 @@ class InMemoryDatabase implements IDatabase {
     for (const t of this.tokens.values()) {
       if (t.id === id) t.used = true;
     }
+  }
+
+  async verifyTeamMember(teamId: string, minecraftUsername: string): Promise<boolean> {
+    let updated = false;
+    for (const m of this.members.values()) {
+      if (m.teamId === teamId && m.minecraftUsername.toLowerCase() === minecraftUsername.toLowerCase()) {
+        m.verified = true;
+        updated = true;
+      }
+    }
+    return updated;
   }
 
   async createAuditLog(entry: any): Promise<void> {
@@ -427,6 +439,14 @@ class PostgresDatabase implements IDatabase {
 
   async markVerificationTokenUsed(id: string): Promise<void> {
     await this.pool.query('UPDATE verification_tokens SET used = true WHERE id = $1', [id]);
+  }
+
+  async verifyTeamMember(teamId: string, minecraftUsername: string): Promise<boolean> {
+    const res = await this.pool.query(
+      'UPDATE team_members SET verified = true WHERE team_id = $1 AND LOWER(minecraft_username) = LOWER($2)',
+      [teamId, minecraftUsername]
+    );
+    return (res.rowCount ?? 0) > 0;
   }
 
   async createAuditLog(entry: any): Promise<void> {

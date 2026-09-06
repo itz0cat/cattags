@@ -16,6 +16,7 @@ export async function runMigrations() {
   });
 
   try {
+    // 1. Initial Schema Migration (001)
     const possiblePaths = [
       path.join(__dirname, 'migrations', '001_initial_schema.sql'),
       path.join(__dirname, '..', '..', 'src', 'db', 'migrations', '001_initial_schema.sql'),
@@ -100,7 +101,74 @@ CREATE INDEX IF NOT EXISTS idx_teams_slug ON teams(slug);
 `;
     }
     await pool.query(sql);
-    console.log('[Migration] Migration executed successfully.');
+
+    // 2. Better Auth Migration (002)
+    const possibleBetterAuthPaths = [
+      path.join(__dirname, 'migrations', '002_better_auth.sql'),
+      path.join(__dirname, '..', '..', 'src', 'db', 'migrations', '002_better_auth.sql'),
+      path.join(process.cwd(), 'backend', 'src', 'db', 'migrations', '002_better_auth.sql'),
+      path.join(process.cwd(), 'src', 'db', 'migrations', '002_better_auth.sql')
+    ];
+    let betterAuthSql = '';
+    for (const p of possibleBetterAuthPaths) {
+      if (fs.existsSync(p)) {
+        betterAuthSql = fs.readFileSync(p, 'utf8');
+        break;
+      }
+    }
+    if (!betterAuthSql) {
+      betterAuthSql = `
+CREATE TABLE IF NOT EXISTS "user" (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    "emailVerified" BOOLEAN NOT NULL DEFAULT FALSE,
+    image TEXT,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "minecraftUsername" TEXT,
+    role TEXT NOT NULL DEFAULT 'USER'
+);
+
+CREATE TABLE IF NOT EXISTS session (
+    id TEXT PRIMARY KEY,
+    "expiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "userId" TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS account (
+    id TEXT PRIMARY KEY,
+    "accountId" TEXT NOT NULL,
+    "providerId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    "accessToken" TEXT,
+    "refreshToken" TEXT,
+    "idToken" TEXT,
+    "accessTokenExpiresAt" TIMESTAMP WITH TIME ZONE,
+    "refreshTokenExpiresAt" TIMESTAMP WITH TIME ZONE,
+    scope TEXT,
+    password TEXT,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS verification (
+    id TEXT PRIMARY KEY,
+    identifier TEXT NOT NULL,
+    value TEXT NOT NULL,
+    "expiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+`;
+    }
+    await pool.query(betterAuthSql);
+    console.log('[Migration] Migrations executed successfully.');
   } catch (err) {
     console.error('[Migration] Error running migrations:', err);
     throw err;

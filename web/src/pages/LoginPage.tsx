@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LogIn } from 'lucide-react';
+import { TurnstileWidget } from '../components/TurnstileWidget';
 
 interface LoginPageProps {
   onLoginSuccess: (user: any, token: string) => void;
@@ -9,6 +10,7 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +23,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, turnstileToken })
       });
 
       const data = await res.json();
@@ -71,6 +73,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigate
               className="w-full px-3.5 py-2 rounded-lg bg-[#080B12] border border-[#1F2937] text-sm text-[#F9FAFB] focus:border-[#3B82F6] focus:outline-none"
             />
           </div>
+
+          <TurnstileWidget onSuccess={token => setTurnstileToken(token)} />
 
           <button
             type="submit"
