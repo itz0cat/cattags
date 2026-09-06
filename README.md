@@ -110,9 +110,19 @@ Copy `.env.example` to `.env` and configure:
 | `BETTER_AUTH_SECRET` | **YES** | Secret key used by Better Auth session encryption. |
 | `BETTER_AUTH_URL` | **YES** | Root API origin (e.g. `http://localhost:8080` or `https://cattags-api.onrender.com`). |
 | `DATABASE_URL` | Production | PostgreSQL connection string (`postgresql://...`). In-memory SQLite/Memory fallback used for tests. |
-| `TURNSTILE_SECRET_KEY` | Recommended | Cloudflare Turnstile secret key for verifying CAPTCHA challenges. |
-| `VITE_TURNSTILE_SITE_KEY` | Recommended | Cloudflare Turnstile public site key embedded in the frontend forms. |
-| `RESEND_API_KEY` | Recommended | Resend API key (`re_...`) used to send verification and security emails. |
+| `DISCORD_CLIENT_ID` | **YES** | Discord Developer Portal Application Client ID. |
+| `DISCORD_CLIENT_SECRET` | **YES** | Discord Developer Portal OAuth2 Client Secret. |
+
+#### Discord OAuth Setup
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a **New Application** (or select your existing one).
+2. Under **OAuth2** -> **General**:
+   - Copy the **Client ID** and set it as `DISCORD_CLIENT_ID`.
+   - Reset/Copy the **Client Secret** and set it as `DISCORD_CLIENT_SECRET`.
+   - Add your OAuth2 Redirect URI:
+     `https://cattags-api.onrender.com/api/auth/callback/discord` (production)
+     `http://localhost:8080/api/auth/callback/discord` (local development)
+3. Under **OAuth2** -> **URL Generator**, ensure scopes `identify`, `email`, and `guilds.join` are checked.
+4. Add `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` to your environment variables on Render (or local `.env`).
 
 #### Cloudflare Turnstile Setup
 1. Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/) and navigate to **Turnstile**.

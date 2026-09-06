@@ -36,20 +36,16 @@ export const auth = betterAuth({
   database: getDatabaseOption(),
   secret: authSecret || 'test-secret-key-32-chars-long-testing!',
   baseURL: process.env.BETTER_AUTH_URL || process.env.API_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:8080',
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: false
-  },
-  emailVerification: {
-    sendOnSignUp: true,
-    autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, url, token }) => {
-      await sendVerificationEmail({
-        email: user.email,
-        url,
-        token
-      });
+  socialProviders: {
+    discord: {
+      clientId: process.env.DISCORD_CLIENT_ID || '',
+      clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
+      scope: ['identify', 'email', 'guilds.join']
     }
+  },
+  emailAndPassword: {
+    enabled: process.env.NODE_ENV === 'test',
+    requireEmailVerification: false
   },
   user: {
     additionalFields: {

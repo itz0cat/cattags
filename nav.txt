@@ -1,0 +1,89 @@
+CatTags Dashboard — Navigation Bar Implementation
+
+Build a proper navigation bar for the web dashboard that adapts based on
+authentication state, using Better Auth's session data to determine what's
+shown.
+
+---
+
+STRUCTURE
+
+Always visible (any user, logged in or not):
+- Logo + "CatTags" wordmark, left-aligned, links to "/"
+- "Teams" link → public team directory page (already exists)
+- "Docs" link → setup/usage guide page
+
+Logged out only (replace the below with these when no session exists):
+- "Log in" button
+- "Sign up" button (or a single "Continue with Discord" button if Discord
+  is set as the primary/recommended flow — check with a small secondary
+  "or use email" link/button next to it)
+
+Logged in only (replace login/signup with these when a session exists):
+- "Dashboard" link → logged-in home/overview
+- "My Team" link → only show this if the user owns or belongs to a team;
+  hide it entirely otherwise (check via the existing team-membership
+  lookup, don't just show a broken/empty page)
+- "Verify" link → the page where a user redeems an in-game verification
+  code (wire this to the existing /api/v1/teams/:id/verify/confirm
+  endpoint if a front-end page for it doesn't exist yet — build a simple
+  one: a single code input + submit button)
+- Profile avatar (bottom-right corner, not inline with the other links) —
+  shows the user's Discord avatar if they signed in via Discord, otherwise
+  a colored initials circle. Clicking it opens a dropdown with:
+  - "Settings" (can be a stub/placeholder page for now if none exists)
+  - "Log out" (calls Better Auth's sign-out, redirects to "/")
+
+---
+
+STYLING
+
+Follow the existing CatTags brand tokens already used elsewhere in the
+dashboard (dark background #080B12, surface #111827, electric blue accent
+#3B82F6, Inter font, 6-10px corner radii). The active/current page's nav
+link should be visually distinguished (e.g. accent-colored text or a subtle
+background highlight) from inactive links.
+
+On mobile widths, collapse the nav links (not the logo or avatar) behind a
+hamburger menu that slides down or opens a drawer — don't just let it
+overflow or wrap awkwardly.
+
+---
+
+BEHAVIOR
+
+- Use the real router (react-router-dom, now that it's properly wired up)
+  so each link is an actual <Link>, not a state-swap — clicking one should
+  update the URL and be independently reachable/bookmarkable/refreshable.
+- The nav bar's auth-state check should use Better Auth's session hook so
+  it updates immediately after login/logout without requiring a manual
+  page refresh.
+- "My Team" visibility check should not cause a loading flash/flicker on
+  every page load — cache or fetch this efficiently, ideally as part of
+  the existing session/user data rather than a separate round-trip if
+  avoidable.
+
+---
+
+WHAT NOT TO ADD (yet)
+
+Do not add Leaderboard, Notifications, or Billing links — none of these
+have backing pages/features built yet, and adding them now would just
+create dead/broken links.
+
+---
+
+VALIDATION
+
+Before saying this is done:
+1. Manually confirm the nav bar shows the correct set of links in both
+   logged-out and logged-in states.
+2. Confirm "My Team" is hidden for a user with no team.
+3. Confirm the mobile hamburger menu actually opens/closes and all links
+   work from inside it.
+4. Confirm clicking each link updates the browser URL correctly (tying
+   into the routing fix from before).
+5. Confirm the profile dropdown's "Log out" actually ends the session and
+   redirects properly.
+
+Give a concise summary of what was built, not a step-by-step narration.

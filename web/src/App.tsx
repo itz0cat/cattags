@@ -9,6 +9,9 @@ import { TeamCreatePage } from './pages/TeamCreatePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { AdminPage } from './pages/AdminPage';
+import { DocsPage } from './pages/DocsPage';
+import { VerifyPage } from './pages/VerifyPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 // Protected Route Guard
 function ProtectedRoute({
@@ -56,53 +59,14 @@ function TeamDetailWrapper({ user, onNavigate }: { user: any; onNavigate: (tab: 
 }
 
 // My Team Auto-Locator Redirect
-function MyTeamRedirect({ user }: { user: any }) {
-  const [loading, setLoading] = useState(true);
-  const [target, setTarget] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) {
-      setTarget('/login?redirect=/my-team');
-      setLoading(false);
-      return;
-    }
-
-    let active = true;
-    fetch('/api/v1/teams')
-      .then(res => res.json())
-      .then(data => {
-        if (!active) return;
-        const myTeam = data.teams?.find(
-          (t: any) => t.ownerId === user.id || t.owner_id === user.id
-        );
-        if (myTeam) {
-          setTarget(`/teams/${myTeam.id}`);
-        } else {
-          setTarget('/teams/create');
-        }
-      })
-      .catch(() => {
-        if (active) setTarget('/dashboard');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
-  if (loading) {
-    return (
-      <div className="p-16 text-center text-sm text-[#9CA3AF]">
-        <div className="inline-block w-6 h-6 border-2 border-[#3B82F6] border-t-transparent rounded-full animate-spin mb-3" />
-        <p>Locating your team...</p>
-      </div>
-    );
+function MyTeamRedirect({ user, team }: { user: any; team: any }) {
+  if (!user) {
+    return <Navigate to="/login?redirect=/my-team" replace />;
   }
-
-  return <Navigate to={target || '/dashboard'} replace />;
+  if (team && team.id) {
+    return <Navigate to={`/teams/${team.id}`} replace />;
+  }
+  return <Navigate to="/teams/create" replace />;
 }
 
 // Catch-All 404 Page
@@ -118,7 +82,7 @@ function NotFoundPage() {
       </p>
       <div className="flex items-center justify-center gap-3 pt-4">
         <Link
-          to="/home"
+          to="/"
           className="px-5 py-2.5 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors"
         >
           Return Home
@@ -135,35 +99,80 @@ function NotFoundPage() {
 }
 
 export function App() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('cattags_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [team, setTeam] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('cattags_team');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem('cattags_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
+  // Sync authentication & team state with Better Auth session cookie
+  const syncSession = async () => {
+    try {
+      const token = localStorage.getItem('cattags_token');
+      const res = await fetch('/api/v1/auth/me', {
+        credentials: 'include',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          setUser(data.user);
+          localStorage.setItem('cattags_user', JSON.stringify(data.user));
+          if (data.team) {
+            setTeam(data.team);
+            localStorage.setItem('cattags_team', JSON.stringify(data.team));
+          } else {
+            setTeam(null);
+            localStorage.removeItem('cattags_team');
+          }
+        }
+      } else if (res.status === 401) {
+        setUser(null);
+        setTeam(null);
         localStorage.removeItem('cattags_user');
+        localStorage.removeItem('cattags_team');
+        localStorage.removeItem('cattags_token');
       }
+    } catch {
+      // offline fallback to cached state
     }
-  }, []);
-
-  const handleLoginSuccess = (userData: any, token: string) => {
-    setUser(userData);
-    localStorage.setItem('cattags_user', JSON.stringify(userData));
-    localStorage.setItem('cattags_token', token);
-
-    const searchParams = new URLSearchParams(window.location.search);
-    const redirect = searchParams.get('redirect') || '/dashboard';
-    navigate(redirect);
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('cattags_user');
-    localStorage.removeItem('cattags_token');
-    navigate('/login');
+  useEffect(() => {
+    syncSession();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/sign-out', {
+        method: 'POST',
+        credentials: 'include'
+      }).catch(() => {});
+    } finally {
+      setUser(null);
+      setTeam(null);
+      localStorage.removeItem('cattags_user');
+      localStorage.removeItem('cattags_team');
+      localStorage.removeItem('cattags_token');
+      navigate('/');
+    }
   };
 
   const handleNavigate = (tab: string, teamId?: string) => {
@@ -177,14 +186,20 @@ export function App() {
       navigate('/dashboard');
     } else if (tab === 'my-team') {
       navigate('/my-team');
+    } else if (tab === 'verify') {
+      navigate('/verify');
+    } else if (tab === 'docs') {
+      navigate('/docs');
+    } else if (tab === 'settings') {
+      navigate('/settings');
     } else if (tab === 'login') {
       navigate('/login');
     } else if (tab === 'register') {
       navigate('/register');
     } else if (tab === 'admin') {
       navigate('/admin');
-    } else if (tab === 'home') {
-      navigate('/home');
+    } else if (tab === 'home' || tab === '/') {
+      navigate('/');
     } else if (tab.startsWith('/')) {
       navigate(tab);
     }
@@ -193,18 +208,28 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-[#080B12] text-[#F9FAFB] flex flex-col overflow-x-hidden">
-      <Navbar user={user} onLogout={handleLogout} />
+      <Navbar user={user} team={team} onLogout={handleLogout} />
 
       <main className="flex-1">
         <Routes>
-          {/* Root Route: Redirect unauthenticated fresh visits to /login; authenticated visits to /dashboard */}
-          <Route
-            path="/"
-            element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
-          />
-
-          {/* Marketing / Home page */}
+          {/* Public Home Page */}
+          <Route path="/" element={<HomePage onNavigate={handleNavigate} />} />
           <Route path="/home" element={<HomePage onNavigate={handleNavigate} />} />
+
+          {/* Docs & Setup Guide */}
+          <Route path="/docs" element={<DocsPage />} />
+
+          {/* Verification Portal (redeem code) */}
+          <Route path="/verify" element={<VerifyPage />} />
+
+          {/* Public Team Directory */}
+          <Route path="/teams" element={<TeamDirectoryPage onNavigate={handleNavigate} />} />
+
+          {/* Team Detail by ID */}
+          <Route
+            path="/teams/:id"
+            element={<TeamDetailWrapper user={user} onNavigate={handleNavigate} />}
+          />
 
           {/* Protected Dashboard */}
           <Route
@@ -221,13 +246,10 @@ export function App() {
             path="/my-team"
             element={
               <ProtectedRoute user={user}>
-                <MyTeamRedirect user={user} />
+                <MyTeamRedirect user={user} team={team} />
               </ProtectedRoute>
             }
           />
-
-          {/* Public Team Directory */}
-          <Route path="/teams" element={<TeamDirectoryPage onNavigate={handleNavigate} />} />
 
           {/* Protected Team Registration */}
           <Route
@@ -239,10 +261,21 @@ export function App() {
             }
           />
 
-          {/* Team Detail by ID */}
+          {/* Protected Settings Route */}
           <Route
-            path="/teams/:id"
-            element={<TeamDetailWrapper user={user} onNavigate={handleNavigate} />}
+            path="/settings"
+            element={
+              <ProtectedRoute user={user}>
+                <SettingsPage
+                  user={user}
+                  onUserUpdate={(updatedUser) => {
+                    setUser(updatedUser);
+                    localStorage.setItem('cattags_user', JSON.stringify(updatedUser));
+                    syncSession();
+                  }}
+                />
+              </ProtectedRoute>
+            }
           />
 
           {/* Public-Only Auth Routes */}
@@ -250,7 +283,7 @@ export function App() {
             path="/login"
             element={
               <PublicOnlyRoute user={user}>
-                <LoginPage onLoginSuccess={handleLoginSuccess} onNavigate={handleNavigate} />
+                <LoginPage onNavigate={handleNavigate} />
               </PublicOnlyRoute>
             }
           />
@@ -258,12 +291,12 @@ export function App() {
             path="/register"
             element={
               <PublicOnlyRoute user={user}>
-                <RegisterPage onRegisterSuccess={handleLoginSuccess} onNavigate={handleNavigate} />
+                <RegisterPage onNavigate={handleNavigate} />
               </PublicOnlyRoute>
             }
           />
 
-          {/* Protected Admin/System Route */}
+          {/* Protected Admin Route */}
           <Route
             path="/admin"
             element={
@@ -287,11 +320,17 @@ export function App() {
               <span>— Persistent team identity for Minecraft Java 1.21.11 Fabric.</span>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
-              <Link to="/home" className="hover:text-[#F9FAFB] transition-colors">
+              <Link to="/" className="hover:text-[#F9FAFB] transition-colors">
                 Home
               </Link>
               <Link to="/teams" className="hover:text-[#F9FAFB] transition-colors">
                 Directory
+              </Link>
+              <Link to="/docs" className="hover:text-[#F9FAFB] transition-colors">
+                Docs
+              </Link>
+              <Link to="/verify" className="hover:text-[#F9FAFB] transition-colors">
+                Verify
               </Link>
               <Link to="/teams/create" className="hover:text-[#F9FAFB] transition-colors">
                 Register Team
@@ -311,9 +350,6 @@ export function App() {
                 className="hover:text-[#F9FAFB] transition-colors"
               >
                 API Health
-              </a>
-              <a href="mailto:support@cattags.xyz" className="hover:text-[#F9FAFB] transition-colors">
-                Support
               </a>
             </div>
           </div>

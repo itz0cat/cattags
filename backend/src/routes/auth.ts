@@ -19,7 +19,7 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' }
 });
 
-router.post('/register', authLimiter, verifyTurnstile, async (req: Request, res: Response) => {
+router.post('/register', authLimiter, async (req: Request, res: Response) => {
   const { email, password, minecraftUsername } = req.body;
 
   if (!email || !password) {
@@ -104,7 +104,7 @@ router.post('/register', authLimiter, verifyTurnstile, async (req: Request, res:
   });
 });
 
-router.post('/login', authLimiter, verifyTurnstile, async (req: Request, res: Response) => {
+router.post('/login', authLimiter, async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -184,20 +184,85 @@ router.post('/login', authLimiter, verifyTurnstile, async (req: Request, res: Re
 
 router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
   const db = getDatabase();
-  const user = await db.findUserById(req.user!.id);
+  let user = await db.findUserById(req.user!.id);
 
-  if (!user && !req.user) {
-    return res.status(404).json({ error: 'User not found' });
+  if (!user && req.user) {
+    user = await db.createUser({
+      id: req.user.id,
+      email: req.user.email,
+      passwordHash: null,
+      minecraftUsername: req.user.minecraftUsername || null,
+      role: req.user.role || 'USER',
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }).catch(() => null);
   }
+
+  const mcName = user?.minecraft_username || user?.minecraftUsername || req.user!.minecraftUsername;
+  const userTeam = await db.findTeamByUserId(req.user!.id, mcName);
 
   res.json({
     user: {
       id: req.user!.id,
       email: req.user!.email,
-      minecraftUsername: req.user!.minecraftUsername || user?.minecraft_username || user?.minecraftUsername,
+      name: (req.user as any)?.name || null,
+      minecraftUsername: mcName || null,
       role: req.user!.role,
-      emailVerified: req.user!.emailVerified ?? user?.emailVerified ?? true
-    }
+      emailVerified: true,
+      image: (req.user as any)?.image || (req.session as any)?.user?.image || null
+    },
+    team: userTeam ? {
+      id: userTeam.id,
+      name: userTeam.name,
+      slug: userTeam.slug,
+      prefix: userTeam.prefix,
+      logoUrl: userTeam.logoUrl
+    } : null
+  });
+});
+
+router.patch('/profile', authenticate, async (req: AuthRequest, res: Response) => {
+  const { minecraftUsername } = req.body;
+  const db = getDatabase();
+  const userId = req.user!.id;
+
+  let user = await db.findUserById(userId);
+  if (!user && req.user) {
+    user = await db.createUser({
+      id: userId,
+      email: req.user.email,
+      passwordHash: null,
+      minecraftUsername: null,
+      role: req.user.role || 'USER',
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }).catch(() => null);
+  }
+
+  const trimmed = minecraftUsername ? String(minecraftUsername).trim() : null;
+  await db.updateUser(userId, { minecraftUsername: trimmed });
+
+  const userTeam = await db.findTeamByUserId(userId, trimmed);
+
+  res.json({
+    success: true,
+    user: {
+      id: userId,
+      email: req.user!.email,
+      name: (req.user as any)?.name || null,
+      minecraftUsername: trimmed,
+      role: req.user!.role,
+      image: (req.user as any)?.image || (req.session as any)?.user?.image || null
+    },
+    team: userTeam ? {
+      id: userTeam.id,
+      name: userTeam.name,
+      slug: userTeam.slug,
+      prefix: userTeam.prefix,
+      logoUrl: userTeam.logoUrl
+    } : null
   });
 });
 

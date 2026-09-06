@@ -69,10 +69,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/v1/teams - Create a team
-router.post('/', authenticate, verifyTurnstile, async (req: AuthRequest, res: Response) => {
-  if (req.user && req.user.emailVerified === false) {
-    return res.status(403).json({ error: 'Please verify your email address before creating a team' });
-  }
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
 
   const {
     name,
@@ -132,6 +129,21 @@ router.post('/', authenticate, verifyTurnstile, async (req: AuthRequest, res: Re
     createdAt: now,
     updatedAt: now
   };
+
+  // Ensure owner exists in legacy users table for foreign key constraint
+  const existingUser = await db.findUserById(req.user!.id);
+  if (!existingUser) {
+    await db.createUser({
+      id: req.user!.id,
+      email: req.user!.email || `${req.user!.id}@discord.user`,
+      passwordHash: null,
+      minecraftUsername: req.user!.minecraftUsername || null,
+      role: req.user!.role || 'USER',
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
 
   await db.createTeam(newTeam);
 
@@ -445,6 +457,45 @@ router.post('/:id/logo', authenticate, async (req: AuthRequest, res: Response) =
     success: true,
     logoUrl: uploadResult.url,
     team: updatedTeam
+  });
+});
+
+// POST /api/v1/teams/verify/confirm - Universal code redemption
+router.post('/verify/confirm', async (req: Request, res: Response) => {
+  const { code } = req.body;
+  if (!code) {
+    return res.status(400).json({ error: 'Verification code is required' });
+  }
+
+  const db = getDatabase();
+  const token = await db.findVerificationToken(code.trim().toUpperCase());
+  if (!token) {
+    return res.status(404).json({ error: 'Invalid or unrecognized verification token' });
+  }
+
+  if (token.used) {
+    return res.status(400).json({ error: 'This verification token has already been redeemed' });
+  }
+
+  const expiresAt = new Date(token.expires_at || token.expiresAt).getTime();
+  if (Date.now() > expiresAt) {
+    return res.status(400).json({ error: 'This verification token has expired' });
+  }
+
+  const teamId = token.team_id || token.teamId;
+  const username = token.minecraft_username || token.minecraftUsername;
+
+  await db.verifyTeamMember(teamId, username);
+  await db.markVerificationTokenUsed(token.id);
+
+  const team = await db.findTeamById(teamId);
+  res.json({
+    success: true,
+    message: `Player ${username} successfully verified for team ${team ? team.name : ''}!`,
+    teamId,
+    teamName: team ? team.name : null,
+    team: team || null,
+    minecraftUsername: username
   });
 });
 

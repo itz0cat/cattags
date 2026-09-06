@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, PlusCircle } from 'lucide-react';
 import { MinecraftTagPreview } from '../components/MinecraftTagPreview';
-import { TurnstileWidget } from '../components/TurnstileWidget';
 import { TeamStyle } from '@cattags/shared';
 
 interface TeamCreatePageProps {
@@ -16,7 +15,6 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
   const [primaryColor, setPrimaryColor] = useState('#3B82F6');
   const [secondaryColor, setSecondaryColor] = useState('#06B6D4');
   const [isGradient, setIsGradient] = useState(true);
-  const [turnstileToken, setTurnstileToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -66,8 +64,7 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
           primaryColor,
           secondaryColor: isGradient ? secondaryColor : null,
           gradientEnabled: isGradient,
-          style,
-          turnstileToken
+          style
         })
       });
 
@@ -211,8 +208,6 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
               )}
             </div>
           </div>
-
-          <TurnstileWidget onSuccess={token => setTurnstileToken(token)} />
 
           <button
             type="submit"

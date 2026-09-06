@@ -21,6 +21,9 @@ export interface IDatabase {
   findVerificationToken(code: string): Promise<any | null>;
   markVerificationTokenUsed(id: string): Promise<void>;
   verifyTeamMember(teamId: string, minecraftUsername: string): Promise<boolean>;
+  createUser(user: any): Promise<any>;
+  updateUser(id: string, updates: any): Promise<any>;
+  findTeamByUserId(userId: string, minecraftUsername?: string | null): Promise<Team | null>;
   createAuditLog(entry: any): Promise<void>;
 }
 
@@ -50,6 +53,29 @@ class InMemoryDatabase implements IDatabase {
   async createUser(user: any): Promise<any> {
     this.users.set(user.id, user);
     return user;
+  }
+
+  async updateUser(id: string, updates: any): Promise<any> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated = { ...user, ...updates };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async findTeamByUserId(userId: string, minecraftUsername?: string | null): Promise<Team | null> {
+    for (const t of this.teams.values()) {
+      if (t.ownerId === userId) return t;
+    }
+    if (minecraftUsername) {
+      const mc = minecraftUsername.toLowerCase().trim();
+      for (const m of this.members.values()) {
+        if (m.minecraftUsername.toLowerCase().trim() === mc) {
+          return this.teams.get(m.teamId) || null;
+        }
+      }
+    }
+    return null;
   }
 
   async findTeamById(id: string): Promise<Team | null> {
@@ -254,6 +280,38 @@ class PostgresDatabase implements IDatabase {
       [user.id, user.email, user.passwordHash, user.minecraftUsername, user.role || 'USER']
     );
     return res.rows[0];
+  }
+
+  async updateUser(id: string, updates: any): Promise<any> {
+    const res = await this.pool.query(
+      `UPDATE users SET minecraft_username = COALESCE($2, minecraft_username), updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+      [id, updates.minecraft_username || updates.minecraftUsername]
+    );
+    try {
+      await this.pool.query(
+        `UPDATE "user" SET "minecraftUsername" = COALESCE($2, "minecraftUsername"), "updatedAt" = CURRENT_TIMESTAMP WHERE id = $1`,
+        [id, updates.minecraft_username || updates.minecraftUsername]
+      );
+    } catch {}
+    return res.rows[0] || null;
+  }
+
+  async findTeamByUserId(userId: string, minecraftUsername?: string | null): Promise<Team | null> {
+    const params: any[] = [userId];
+    let where = 't.owner_id = $1';
+    if (minecraftUsername) {
+      params.push(minecraftUsername.toLowerCase().trim());
+      where += ' OR LOWER(tm.minecraft_username) = $2';
+    }
+    const res = await this.pool.query(
+      `SELECT t.* FROM teams t
+       LEFT JOIN team_members tm ON tm.team_id = t.id
+       WHERE ${where}
+       ORDER BY t.created_at DESC LIMIT 1`,
+      params
+    );
+    if (!res.rows[0]) return null;
+    return this.mapTeamRow(res.rows[0]);
   }
 
   async findTeamById(id: string): Promise<Team | null> {

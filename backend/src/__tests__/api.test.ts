@@ -264,46 +264,35 @@ describe('CatTags API Integration Tests', () => {
     expect(invalidRes.status).toBe(404);
   });
 
-  it('Cloudflare Turnstile rejects missing and invalid tokens when configured', async () => {
-    process.env.TURNSTILE_SECRET_KEY = 'test-turnstile-secret';
-
-    const regNoToken = await request(app)
-      .post('/api/v1/auth/register')
-      .send({
-        email: 'turnstiletest@example.com',
-        password: 'Password123!'
-      });
-    expect(regNoToken.status).toBe(400);
-    expect(regNoToken.body.error).toContain('CAPTCHA verification failed');
-
-    const regInvalid = await request(app)
-      .post('/api/v1/auth/register')
-      .send({
-        email: 'turnstiletest@example.com',
-        password: 'Password123!',
-        turnstileToken: 'invalid-token'
-      });
-    expect(regInvalid.status).toBe(400);
-    expect(regInvalid.body.error).toContain('Invalid Turnstile token');
-
-    const loginNoToken = await request(app)
-      .post('/api/v1/auth/login')
-      .send({
-        email: 'itzcat@example.com',
-        password: 'Password123!'
-      });
-    expect(loginNoToken.status).toBe(400);
-
-    const teamNoToken = await request(app)
-      .post('/api/v1/teams')
+  it('Universal code redemption /api/v1/teams/verify/confirm verifies team member without teamId in URL', async () => {
+    const tokenRes = await request(app)
+      .post(`/api/v1/teams/${teamId}/verify`)
       .set('Authorization', `Bearer ${authToken}`)
-      .send({
-        name: 'Turnstile Team',
-        slug: 'turnstile-team',
-        prefix: 'TURN'
-      });
-    expect(teamNoToken.status).toBe(400);
+      .send({ minecraftUsername: 'Alex' });
+    expect(tokenRes.status).toBe(200);
+    const code = tokenRes.body.code;
 
-    delete process.env.TURNSTILE_SECRET_KEY;
+    const universalRes = await request(app)
+      .post('/api/v1/teams/verify/confirm')
+      .send({ code });
+    expect(universalRes.status).toBe(200);
+    expect(universalRes.body.success).toBe(true);
+    expect(universalRes.body.teamId).toBe(teamId);
+  });
+
+  it('GET /api/v1/auth/me and PATCH /api/v1/auth/profile return user and team info', async () => {
+    const patchRes = await request(app)
+      .patch('/api/v1/auth/profile')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ minecraftUsername: 'Itz0Spy' });
+    expect(patchRes.status).toBe(200);
+    expect(patchRes.body.user.minecraftUsername).toBe('Itz0Spy');
+
+    const meRes = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${authToken}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.user.minecraftUsername).toBe('Itz0Spy');
+    expect(meRes.body.team).toBeDefined();
   });
 });
