@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { AdminPage } from './pages/AdminPage';
 import { DocsPage } from './pages/DocsPage';
+import { DownloadPage } from './pages/DownloadPage';
 import { VerifyPage } from './pages/VerifyPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TermsPage } from './pages/TermsPage';
@@ -195,6 +196,8 @@ export function App() {
       navigate('/verify');
     } else if (tab === 'docs') {
       navigate('/docs');
+    } else if (tab === 'download') {
+      navigate('/download');
     } else if (tab === 'settings') {
       navigate('/settings');
     } else if (tab === 'login') {
@@ -220,6 +223,9 @@ export function App() {
           {/* Public Home Page */}
           <Route path="/" element={<HomePage onNavigate={handleNavigate} />} />
           <Route path="/home" element={<HomePage onNavigate={handleNavigate} />} />
+
+          {/* Download Mod Page */}
+          <Route path="/download" element={<DownloadPage />} />
 
           {/* Docs & Setup Guide */}
           <Route path="/docs" element={<DocsPage />} />

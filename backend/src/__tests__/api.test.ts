@@ -295,4 +295,22 @@ describe('CatTags API Integration Tests', () => {
     expect(meRes.body.user.minecraftUsername).toBe('Itz0Spy');
     expect(meRes.body.team).toBeDefined();
   });
+
+  it('GET /api/v1/download/latest redirects to persistent GitHub release CDN', async () => {
+    const res = await request(app).get('/api/v1/download/latest');
+    expect(res.status).toBe(302);
+    expect(res.header.location).toContain('releases/latest/download/cattags.jar');
+
+    const topLevelRes = await request(app).get('/download/latest');
+    expect(topLevelRes.status).toBe(302);
+  });
+
+  it('GET /api/v1/download/versions returns available mod versions', async () => {
+    const res = await request(app).get('/api/v1/download/versions');
+    expect(res.status).toBe(200);
+    expect(res.body.latest).toBeDefined();
+    expect(res.body.latest.version).toBeDefined();
+    expect(res.body.requirements).toBeDefined();
+    expect(res.body.requirements.minecraft).toBe('1.21.11');
+  });
 });

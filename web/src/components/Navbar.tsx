@@ -102,6 +102,9 @@ export const Navbar: React.FC<NavbarProps> = ({ user, team, onLogout }) => {
           {/* Desktop Nav Links */}
           <nav className="hidden md:flex items-center space-x-1">
             {/* Always visible */}
+            <Link to="/download" className={linkClass('/download')}>
+              Download
+            </Link>
             <Link to="/teams" className={linkClass('/teams')}>
               Teams
             </Link>
@@ -137,15 +140,13 @@ export const Navbar: React.FC<NavbarProps> = ({ user, team, onLogout }) => {
 
         {/* Right: Auth / Profile Area */}
         <div className="hidden md:flex items-center space-x-3">
-          <a
-            href="https://github.com/itz0cat/cattags/releases/latest"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            to="/download"
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#22C55E]/10 hover:bg-[#22C55E]/20 border border-[#22C55E]/30 text-xs font-semibold text-[#22C55E] transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download Mod</span>
-          </a>
+          </Link>
 
           {user ? (
             <div className="relative" ref={dropdownRef}>
@@ -248,16 +249,14 @@ export const Navbar: React.FC<NavbarProps> = ({ user, team, onLogout }) => {
       {mobileOpen && (
         <div className="md:hidden border-t border-[#1F2937] bg-[#080B12] px-4 py-4 space-y-2 animate-in slide-in-from-top-2 duration-150">
           {/* Always Visible */}
-          <a
-            href="https://github.com/itz0cat/cattags/releases/latest"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            to="/download"
             onClick={() => setMobileOpen(false)}
             className="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold flex items-center space-x-3 bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/30 transition-colors min-h-[44px]"
           >
             <Download className="w-4 h-4 text-[#22C55E]" />
             <span>Download Mod (.jar)</span>
-          </a>
+          </Link>
 
           <Link
             to="/teams"

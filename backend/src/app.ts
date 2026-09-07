@@ -11,6 +11,7 @@ import configRoutes from './routes/config';
 import playerRoutes from './routes/players';
 import teamRoutes from './routes/teams';
 import authRoutes from './routes/auth';
+import downloadRoutes from './routes/download';
 import { errorHandler } from './middleware/errorHandler';
 import { auth } from './auth';
 
@@ -85,9 +86,14 @@ export function createApp() {
   // API Routes
   app.use('/api/v1', healthRoutes);
   app.use('/api/v1', configRoutes);
+  app.use('/api/v1/download', downloadRoutes);
   app.use('/api/v1/players', playerRoutes);
   app.use('/api/v1/teams', teamRoutes);
   app.use('/api/v1/auth', authRoutes);
+
+  // Direct helper redirects for instant downloads
+  app.get('/download/latest', (_req, res) => res.redirect(302, '/api/v1/download/latest'));
+  app.get('/download/mod', (_req, res) => res.redirect(302, '/api/v1/download/latest'));
 
   // Serve web dashboard frontend if built
   const possibleWebDist = [
