@@ -12,6 +12,8 @@ import { AdminPage } from './pages/AdminPage';
 import { DocsPage } from './pages/DocsPage';
 import { VerifyPage } from './pages/VerifyPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { TermsPage } from './pages/TermsPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 
 // Protected Route Guard
 function ProtectedRoute({
@@ -132,6 +134,9 @@ export function App() {
 
       if (res.ok) {
         const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('cattags_token', data.token);
+        }
         if (data.user) {
           setUser(data.user);
           localStorage.setItem('cattags_user', JSON.stringify(data.user));
@@ -256,10 +261,14 @@ export function App() {
             path="/teams/create"
             element={
               <ProtectedRoute user={user}>
-                <TeamCreatePage onNavigate={handleNavigate} />
+                <TeamCreatePage onNavigate={handleNavigate} team={team} />
               </ProtectedRoute>
             }
           />
+
+          {/* Legal Pages */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           {/* Protected Settings Route */}
           <Route
@@ -331,6 +340,12 @@ export function App() {
               </Link>
               <Link to="/verify" className="hover:text-[#F9FAFB] transition-colors">
                 Verify
+              </Link>
+              <Link to="/terms" className="hover:text-[#F9FAFB] transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/privacy" className="hover:text-[#F9FAFB] transition-colors">
+                Privacy Policy
               </Link>
               <Link to="/teams/create" className="hover:text-[#F9FAFB] transition-colors">
                 Register Team

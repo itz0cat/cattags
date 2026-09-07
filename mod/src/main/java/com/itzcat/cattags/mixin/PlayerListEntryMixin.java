@@ -26,11 +26,11 @@ public abstract class PlayerListEntryMixin {
             return;
         }
 
-        CompactTeam team = CatTagsClient.getCacheManager().getTeam(profile.getName(), profile.getId());
+        CompactTeam team = CatTagsClient.getCacheManager().getTeam(profile.name(), profile.id());
         if (team != null && team.getPrefix() != null && !team.getPrefix().isEmpty()) {
             Text baseName = cir.getReturnValue();
             if (baseName == null) {
-                baseName = Text.literal(profile.getName());
+                baseName = Text.literal(profile.name());
             }
             MutableText prefixText = StyleEngine.formatPrefix(team.getPrefix(), team.getStyle());
             cir.setReturnValue(prefixText.append(baseName));

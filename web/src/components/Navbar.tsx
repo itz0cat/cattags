@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Settings, LogOut, CheckCircle, Menu, X, ChevronDown, BookOpen, Users, LayoutDashboard } from 'lucide-react';
+import { Shield, Settings, LogOut, CheckCircle, Menu, X, ChevronDown, BookOpen, Users, LayoutDashboard, Download } from 'lucide-react';
 import { DiscordIcon } from '../pages/LoginPage';
 
 interface NavbarProps {
@@ -136,7 +136,17 @@ export const Navbar: React.FC<NavbarProps> = ({ user, team, onLogout }) => {
         </div>
 
         {/* Right: Auth / Profile Area */}
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center space-x-3">
+          <a
+            href="https://github.com/itz0cat/cattags/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#22C55E]/10 hover:bg-[#22C55E]/20 border border-[#22C55E]/30 text-xs font-semibold text-[#22C55E] transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Mod</span>
+          </a>
+
           {user ? (
             <div className="relative" ref={dropdownRef}>
               <button
@@ -238,6 +248,17 @@ export const Navbar: React.FC<NavbarProps> = ({ user, team, onLogout }) => {
       {mobileOpen && (
         <div className="md:hidden border-t border-[#1F2937] bg-[#080B12] px-4 py-4 space-y-2 animate-in slide-in-from-top-2 duration-150">
           {/* Always Visible */}
+          <a
+            href="https://github.com/itz0cat/cattags/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setMobileOpen(false)}
+            className="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold flex items-center space-x-3 bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/30 transition-colors min-h-[44px]"
+          >
+            <Download className="w-4 h-4 text-[#22C55E]" />
+            <span>Download Mod (.jar)</span>
+          </a>
+
           <Link
             to="/teams"
             onClick={() => setMobileOpen(false)}

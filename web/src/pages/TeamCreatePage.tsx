@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { ArrowLeft, PlusCircle } from 'lucide-react';
+import { ArrowLeft, PlusCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { MinecraftTagPreview } from '../components/MinecraftTagPreview';
 import { TeamStyle } from '@cattags/shared';
 
 interface TeamCreatePageProps {
   onNavigate: (tab: string, teamId?: string) => void;
+  team?: any;
 }
 
-export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) => {
+export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate, team }) => {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [prefix, setPrefix] = useState('');
@@ -18,6 +19,39 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  if (team && team.id) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#EF4444] flex items-center justify-center mx-auto shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#F9FAFB]">
+          Team Limit Reached
+        </h1>
+        <p className="text-sm text-[#9CA3AF] max-w-md mx-auto leading-relaxed">
+          You are already a member or owner of <strong className="text-[#F9FAFB]">{team.name}</strong>.
+          Under CatTags policy, players can only belong to <strong>one team at a time</strong>.
+          To create a new team, you must first leave or delete your current team.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <button
+            onClick={() => onNavigate('team-detail', team.id)}
+            className="flex items-center space-x-2 px-6 py-2.5 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors shadow-sm"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Manage {team.name}</span>
+          </button>
+          <button
+            onClick={() => onNavigate('dashboard')}
+            className="px-5 py-2.5 rounded-lg bg-[#111827] hover:bg-[#172033] border border-[#1F2937] text-[#D1D5DB] font-medium text-sm transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -52,9 +86,10 @@ export const TeamCreatePage: React.FC<TeamCreatePageProps> = ({ onNavigate }) =>
       const token = localStorage.getItem('cattags_token');
       const res = await fetch('/api/v1/teams', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...(token && token !== 'null' && token !== 'undefined' ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           name,

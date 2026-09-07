@@ -1,0 +1,14 @@
+Set up a GitHub Actions workflow to build the Minecraft mod in the cloud
+instead of locally, since local builds are heavy on this mobile device.
+
+Create .github/workflows/build.yml that:
+- Triggers on push to main and on pull requests
+- Sets up JDK 21
+- Runs ./gradlew build in the mod project directory
+- Uploads the resulting .jar (from build/libs/) as a workflow artifact
+- Caches Gradle dependencies between runs to speed up future builds
+
+After creating it, commit and push this workflow file so it's active.
+
+Confirm the workflow file is syntactically valid and explain how I'll
+download the built jar from the Actions tab once a run completes.

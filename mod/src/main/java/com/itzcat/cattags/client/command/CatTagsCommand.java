@@ -41,6 +41,39 @@ public class CatTagsCommand {
                                     .formatted(Formatting.YELLOW));
                             return 1;
                         }))
+                .then(ClientCommandManager.literal("config")
+                        .executes(ctx -> {
+                            net.minecraft.client.MinecraftClient.getInstance().send(() -> {
+                                net.minecraft.client.MinecraftClient.getInstance().setScreen(new com.itzcat.cattags.client.gui.CatTagsConfigScreen(null));
+                            });
+                            return 1;
+                        }))
+                .then(ClientCommandManager.literal("verify")
+                        .then(ClientCommandManager.argument("code", StringArgumentType.string())
+                                .executes(ctx -> {
+                                    String code = StringArgumentType.getString(ctx, "code");
+                                    String username = ctx.getSource().getPlayer() != null ?
+                                            ctx.getSource().getPlayer().getGameProfile().name() :
+                                            ctx.getSource().getClient().getSession().getUsername();
+
+                                    ctx.getSource().sendFeedback(Text.literal("[CatTags] Verifying token " + code + " with backend...")
+                                            .formatted(Formatting.YELLOW));
+
+                                    CatTagsClient.getApiClient().verifyCode(code, username).thenAccept(result -> {
+                                        if (result.success()) {
+                                            ctx.getSource().sendFeedback(Text.literal("[CatTags] " + result.message())
+                                                    .formatted(Formatting.GREEN));
+                                            // Force resolve to refresh cache
+                                            CatTagsClient.getApiClient().resolvePlayersBatch(List.of(
+                                                    new CatTagsApiClient.PlayerQuery(username, null)
+                                            ));
+                                        } else {
+                                            ctx.getSource().sendFeedback(Text.literal("[CatTags] Verification failed: " + result.message())
+                                                    .formatted(Formatting.RED));
+                                        }
+                                    });
+                                    return 1;
+                                })))
                 .then(ClientCommandManager.literal("resolve")
                         .then(ClientCommandManager.argument("player", StringArgumentType.word())
                                 .executes(ctx -> {
@@ -60,5 +93,38 @@ public class CatTagsCommand {
                                     return 1;
                                 })))
         );
+
+        // Also register /team verify <code> as standard shorthand
+        try {
+            dispatcher.register(ClientCommandManager.literal("team")
+                    .then(ClientCommandManager.literal("verify")
+                            .then(ClientCommandManager.argument("code", StringArgumentType.string())
+                                    .executes(ctx -> {
+                                        String code = StringArgumentType.getString(ctx, "code");
+                                        String username = ctx.getSource().getPlayer() != null ?
+                                                ctx.getSource().getPlayer().getGameProfile().name() :
+                                                ctx.getSource().getClient().getSession().getUsername();
+
+                                        ctx.getSource().sendFeedback(Text.literal("[CatTags] Verifying token " + code + " with backend...")
+                                                .formatted(Formatting.YELLOW));
+
+                                        CatTagsClient.getApiClient().verifyCode(code, username).thenAccept(result -> {
+                                            if (result.success()) {
+                                                ctx.getSource().sendFeedback(Text.literal("[CatTags] " + result.message())
+                                                        .formatted(Formatting.GREEN));
+                                                CatTagsClient.getApiClient().resolvePlayersBatch(List.of(
+                                                        new CatTagsApiClient.PlayerQuery(username, null)
+                                                ));
+                                            } else {
+                                                ctx.getSource().sendFeedback(Text.literal("[CatTags] Verification failed: " + result.message())
+                                                        .formatted(Formatting.RED));
+                                            }
+                                        });
+                                        return 1;
+                                    })))
+            );
+        } catch (Exception ignored) {
+            // In case /team is already registered by server or another mod
+        }
     }
 }

@@ -129,5 +129,44 @@ public class CatTagsApiClient {
         }
     }
 
+    public CompletableFuture<VerificationResult> verifyCode(String code, String minecraftUsername) {
+        String backendUrl = CatTagsConfig.get().backendUrl;
+        if (backendUrl.endsWith("/")) {
+            backendUrl = backendUrl.substring(0, backendUrl.length() - 1);
+        }
+
+        JsonObject body = new JsonObject();
+        body.addProperty("code", code.trim());
+        if (minecraftUsername != null) {
+            body.addProperty("minecraftUsername", minecraftUsername.trim());
+        }
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(backendUrl + "/api/v1/teams/verify/confirm"))
+                .header("Content-Type", "application/json")
+                .header("User-Agent", "CatTags-Fabric-1.21.11")
+                .timeout(Duration.ofSeconds(8))
+                .POST(HttpRequest.BodyPublishers.ofString(GSON.toJson(body)))
+                .build();
+
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    try {
+                        JsonObject json = GSON.fromJson(response.body(), JsonObject.class);
+                        if (response.statusCode() == 200 && json.has("success") && json.get("success").getAsBoolean()) {
+                            String message = json.has("message") ? json.get("message").getAsString() : "Successfully verified!";
+                            return new VerificationResult(true, message);
+                        } else {
+                            String err = json.has("error") ? json.get("error").getAsString() : "Verification failed (" + response.statusCode() + ")";
+                            return new VerificationResult(false, err);
+                        }
+                    } catch (Exception e) {
+                        return new VerificationResult(false, "Failed to parse response: " + e.getMessage());
+                    }
+                })
+                .exceptionally(ex -> new VerificationResult(false, "Network error: " + ex.getMessage()));
+    }
+
     public record PlayerQuery(String username, UUID uuid) {}
+    public record VerificationResult(boolean success, String message) {}
 }

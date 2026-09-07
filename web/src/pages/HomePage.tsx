@@ -28,7 +28,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           Register your team once, and every player with the mod sees your custom colors, gradients, and logo.
         </p>
 
-        <div className="mt-8 flex flex-wrap justify-center gap-4">
+        <div className="mt-8 flex flex-wrap justify-center gap-3 sm:gap-4">
+          <a
+            href="https://github.com/itz0cat/cattags/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center space-x-2 px-6 py-3 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-white font-semibold shadow-lg shadow-[#22C55E]/20 transition-all hover:scale-[1.02]"
+          >
+            <Download className="w-4 h-4" />
+            <span>Download Mod (.jar)</span>
+          </a>
           <button
             onClick={() => onNavigate('create-team')}
             className="flex items-center space-x-2 px-6 py-3 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-semibold shadow-lg shadow-[#3B82F6]/20 transition-all hover:scale-[1.02]"

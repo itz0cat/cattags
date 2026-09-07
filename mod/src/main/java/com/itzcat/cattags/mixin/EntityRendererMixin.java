@@ -30,7 +30,7 @@ public abstract class EntityRendererMixin<T extends Entity> {
         }
 
         if (entity instanceof PlayerEntity player) {
-            CompactTeam team = CatTagsClient.getCacheManager().getTeam(player.getGameProfile().getName(), player.getUuid());
+            CompactTeam team = CatTagsClient.getCacheManager().getTeam(player.getGameProfile().name(), player.getUuid());
             if (team != null && team.getPrefix() != null && !team.getPrefix().isEmpty()) {
                 MutableText formattedPrefix = StyleEngine.formatPrefix(team.getPrefix(), team.getStyle());
                 return formattedPrefix.append(originalText);

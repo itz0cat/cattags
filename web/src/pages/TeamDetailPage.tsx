@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Users, Shield, Palette, Key, Trash2, Plus, Check, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Users, Shield, Palette, Key, Trash2, Plus, Check, Copy, CheckCircle2, AlertCircle, UserMinus } from 'lucide-react';
 import { MinecraftTagPreview } from '../components/MinecraftTagPreview';
 import { TeamStyle } from '@cattags/shared';
 
@@ -81,9 +81,10 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
       const token = localStorage.getItem('cattags_token');
       const res = await fetch(`/api/v1/teams/${teamId}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...(token && token !== 'null' && token !== 'undefined' ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           prefix,
@@ -115,9 +116,10 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
       const token = localStorage.getItem('cattags_token');
       await fetch(`/api/v1/teams/${teamId}/members`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...(token && token !== 'null' && token !== 'undefined' ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           minecraftUsername: newMemberName.trim(),
@@ -141,21 +143,50 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
     }
   };
 
-  const handleRemoveMember = async (memberId: string) => {
-    if (!confirm('Remove this member?')) return;
+  const handleRemoveMember = async (memberId: string, username?: string) => {
+    if (!confirm(`Are you sure you want to kick ${username || 'this member'} from the team?`)) return;
     try {
       const token = localStorage.getItem('cattags_token');
-      await fetch(`/api/v1/teams/${teamId}/members/${memberId}`, {
+      const res = await fetch(`/api/v1/teams/${teamId}/members/${memberId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include',
+        headers: {
+          ...(token && token !== 'null' && token !== 'undefined' ? { Authorization: `Bearer ${token}` } : {})
+        }
       });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to remove member');
+      }
+      setStatusMessage({ type: 'success', text: `Player ${username || ''} kicked from team.` });
       fetchTeam();
-    } catch {
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Error kicking member' });
       if (team) {
         const updated = { ...team };
         updated.members = updated.members.filter((m: any) => m.id !== memberId);
         setTeam(updated);
       }
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!confirm('Are you sure you want to leave this team? You will lose access to the team tag in-game.')) return;
+    try {
+      const token = localStorage.getItem('cattags_token');
+      const res = await fetch(`/api/v1/teams/${teamId}/leave`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && token !== 'null' && token !== 'undefined' ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to leave team');
+      onNavigate('dashboard');
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Error leaving team' });
     }
   };
 
@@ -168,9 +199,10 @@ export const TeamDetailPage: React.FC<TeamDetailPageProps> = ({ teamId, user, on
       const token = localStorage.getItem('cattags_token');
       const res = await fetch(`/api/v1/teams/${teamId}/verify`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...(token && token !== 'null' && token !== 'undefined' ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ minecraftUsername: username })
       });

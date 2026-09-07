@@ -23,9 +23,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ user, onUserUpdate }
       const token = localStorage.getItem('cattags_token');
       const res = await fetch('/api/v1/auth/profile', {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          ...(token && token !== 'null' && token !== 'undefined' ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ minecraftUsername: minecraftUsername.trim() })
       });

@@ -21,6 +21,9 @@
     ],
     "client": [
       "com.itzcat.cattags.client.CatTagsClient"
+    ],
+    "modmenu": [
+      "com.itzcat.cattags.client.gui.CatTagsModMenu"
     ]
   },
   "mixins": [

@@ -4,8 +4,8 @@ import rateLimit from 'express-rate-limit';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../db/database';
 import { authenticate, AuthRequest, generateToken } from '../middleware/auth';
-import { verifyTurnstile } from '../middleware/turnstile';
 import { auth } from '../auth';
+import { autoJoinDiscordGuild } from '../services/discord';
 
 const router = Router();
 
@@ -202,7 +202,18 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
   const mcName = user?.minecraft_username || user?.minecraftUsername || req.user!.minecraftUsername;
   const userTeam = await db.findTeamByUserId(req.user!.id, mcName);
 
+  // Auto-join user to official Discord guild (1263147204940533781)
+  autoJoinDiscordGuild(req.user!.id).catch(() => {});
+
+  const freshToken = generateToken({
+    id: req.user!.id,
+    email: req.user!.email,
+    role: req.user!.role,
+    minecraftUsername: mcName || undefined
+  });
+
   res.json({
+    token: freshToken,
     user: {
       id: req.user!.id,
       email: req.user!.email,

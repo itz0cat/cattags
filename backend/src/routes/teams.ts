@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../db/database';
 import { authenticate, AuthRequest, optionalAuth } from '../middleware/auth';
-import { verifyTurnstile } from '../middleware/turnstile';
 import { getStorageProvider } from '../storage';
 import { Team, TeamMember, TeamRole, LIMITS } from '@cattags/shared';
 
@@ -94,6 +93,16 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
 
   const normalizedSlug = slug.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
   const db = getDatabase();
+
+  // Enforce 1 team per person
+  const mcName = req.user!.minecraftUsername;
+  const existingUserTeam = await db.findTeamByUserId(req.user!.id, mcName);
+  if (existingUserTeam && req.user!.role !== 'ADMIN') {
+    return res.status(400).json({
+      error: `You already belong to team "${existingUserTeam.name}". Players can only belong to one team at a time. Leave or delete your current team first.`,
+      team: existingUserTeam
+    });
+  }
 
   const existingSlug = await db.findTeamBySlug(normalizedSlug);
   if (existingSlug) {
@@ -299,7 +308,44 @@ router.delete('/:id/members/:memberId', authenticate, async (req: AuthRequest, r
     return res.status(404).json({ error: 'Member not found' });
   }
 
-  res.json({ success: true });
+  res.json({ success: true, message: 'Member removed from team' });
+});
+
+// POST /api/v1/teams/:id/leave - Member leaves team
+router.post('/:id/leave', authenticate, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const db = getDatabase();
+  const team = await db.findTeamById(id);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  if (team.ownerId === req.user!.id) {
+    return res.status(400).json({
+      error: 'Team owners cannot leave their own team. You can delete the team or transfer ownership.'
+    });
+  }
+
+  const members = await db.listTeamMembers(id);
+  const mcName = req.user!.minecraftUsername?.toLowerCase().trim();
+  const member = members.find(m =>
+    (m as any).userId === req.user!.id ||
+    (mcName && m.minecraftUsername.toLowerCase().trim() === mcName)
+  );
+
+  if (!member) {
+    return res.status(404).json({ error: 'You are not a member of this team' });
+  }
+
+  await db.removeTeamMember(id, member.id);
+  await db.createAuditLog({
+    id: uuidv4(),
+    teamId: id,
+    userId: req.user!.id,
+    action: 'MEMBER_LEFT',
+    details: { minecraftUsername: member.minecraftUsername },
+    ipAddress: req.ip
+  });
+
+  res.json({ success: true, message: `You have successfully left team ${team.name}` });
 });
 
 // POST /api/v1/teams/:id/verify - Generate verification token for in-game cracked/offline verification
@@ -340,6 +386,62 @@ router.post('/:id/verify', authenticate, async (req: AuthRequest, res: Response)
     command: `/team verify ${code}`,
     expiresInSeconds: 900,
     instructions: 'Run this command on a verified CatTags server to confirm identity.'
+  });
+});
+
+// POST /api/v1/teams/verify/confirm - Global verification endpoint by code (for in-game command)
+router.post('/verify/confirm', async (req: Request, res: Response) => {
+  const { code, minecraftUsername } = req.body;
+
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ error: 'Verification code is required' });
+  }
+
+  const db = getDatabase();
+  const token = await db.findVerificationToken(code.trim().toUpperCase());
+  if (!token) {
+    return res.status(404).json({ error: 'Invalid verification code' });
+  }
+
+  if (token.used) {
+    return res.status(400).json({ error: 'Verification code has already been used' });
+  }
+
+  const expiresAt = new Date(token.expires_at || token.expiresAt);
+  if (expiresAt.getTime() < Date.now()) {
+    return res.status(400).json({ error: 'Verification code has expired' });
+  }
+
+  const teamId = token.team_id || token.teamId;
+  const team = await db.findTeamById(teamId);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+
+  // Mark token used
+  await db.markVerificationTokenUsed(token.id);
+
+  // Mark matching member verified in database
+  const username = token.minecraft_username || token.minecraftUsername || minecraftUsername;
+  const memberUpdated = await db.verifyTeamMember(teamId, username);
+
+  // Increment team sync version and audit log
+  await db.updateTeam(teamId, { version: team.version + 1 });
+  await db.createAuditLog({
+    id: uuidv4(),
+    teamId,
+    action: 'MEMBER_VERIFIED',
+    details: { minecraftUsername: username, code: token.code }
+  });
+
+  res.json({
+    success: true,
+    message: `Player ${username} successfully verified for team ${team.name}`,
+    minecraftUsername: username,
+    team: {
+      id: team.id,
+      name: team.name,
+      prefix: team.prefix
+    },
+    memberUpdated
   });
 });
 

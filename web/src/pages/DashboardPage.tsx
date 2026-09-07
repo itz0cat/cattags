@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit3, ShieldCheck, AlertCircle, ExternalLink } from 'lucide-react';
+import { Users, Plus, Edit3, ShieldCheck, AlertCircle, ExternalLink, Download } from 'lucide-react';
 import { MinecraftTagPreview } from '../components/MinecraftTagPreview';
 
 interface DashboardPageProps {
@@ -51,15 +51,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate }
             {user ? `Logged in as ${user.minecraftUsername || user.email}` : 'Sign in to manage your official Minecraft teams and rosters'}
           </p>
         </div>
-        {user && (
-          <button
-            onClick={() => onNavigate('create-team')}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors"
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href="https://github.com/itz0cat/cattags/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-white font-medium text-sm transition-colors shadow-sm"
           >
-            <Plus className="w-4 h-4" />
-            <span>Create New Team</span>
-          </button>
-        )}
+            <Download className="w-4 h-4" />
+            <span>Download Mod (.jar)</span>
+          </a>
+          {user && (
+            <button
+              onClick={() => onNavigate('create-team')}
+              className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#3B82F6] hover:bg-[#1D4ED8] text-white font-medium text-sm transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create New Team</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Loading State */}

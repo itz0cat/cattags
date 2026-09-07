@@ -86,7 +86,7 @@ public class LogoTextureManager {
                 client.execute(() -> {
                     try (FileInputStream fis = new FileInputStream(cachedFile)) {
                         NativeImage image = NativeImage.read(fis);
-                        NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
+                        NativeImageBackedTexture texture = new NativeImageBackedTexture(() -> "cattags_logo_" + teamId, image);
                         Identifier textureId = Identifier.of("cattags", "logo_" + teamId.toLowerCase().replace("-", "_"));
                         client.getTextureManager().registerTexture(textureId, texture);
                         teamToTexture.put(teamId, textureId);

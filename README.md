@@ -98,7 +98,7 @@ Compiled mod JAR is located at: `mod/build/libs/cattags-1.0.0.jar`.
 
 ## Environment & Security Configuration
 
-CatTags incorporates enterprise-grade security including Better Auth, Cloudflare Turnstile bot protection, Resend transactional emails, and strict rate limiting.
+CatTags incorporates enterprise-grade security including Discord OAuth, auto-guild enrollment, strict rate limiting, and cryptographic token verification.
 
 ### Required Environment Variables
 
@@ -112,30 +112,26 @@ Copy `.env.example` to `.env` and configure:
 | `DATABASE_URL` | Production | PostgreSQL connection string (`postgresql://...`). In-memory SQLite/Memory fallback used for tests. |
 | `DISCORD_CLIENT_ID` | **YES** | Discord Developer Portal Application Client ID. |
 | `DISCORD_CLIENT_SECRET` | **YES** | Discord Developer Portal OAuth2 Client Secret. |
+| `DISCORD_GUILD_ID` | Optional | Auto-join guild ID (defaults to `1263147204940533781`). |
+| `DISCORD_BOT_TOKEN` | Optional | Bot token used to automatically add users to the community guild on login. |
 
-#### Discord OAuth Setup
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a **New Application** (or select your existing one).
+#### Discord OAuth & Auto-Join Setup
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and select your application.
 2. Under **OAuth2** -> **General**:
    - Copy the **Client ID** and set it as `DISCORD_CLIENT_ID`.
    - Reset/Copy the **Client Secret** and set it as `DISCORD_CLIENT_SECRET`.
    - Add your OAuth2 Redirect URI:
      `https://cattags-api.onrender.com/api/auth/callback/discord` (production)
      `http://localhost:8080/api/auth/callback/discord` (local development)
-3. Under **OAuth2** -> **URL Generator**, ensure scopes `identify`, `email`, and `guilds.join` are checked.
-4. Add `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` to your environment variables on Render (or local `.env`).
+3. Under **OAuth2** -> **URL Generator**, ensure scopes `identify`, `email`, and `guilds.join` are enabled.
+4. When users log in with Discord, they are automatically enrolled into server `1263147204940533781` using the `guilds.join` scope.
 
-#### Cloudflare Turnstile Setup
-1. Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/) and navigate to **Turnstile**.
-2. Add a new site with your domain(s) (`cattags.xyz`, `localhost`).
-3. Copy the **Site Key** to `VITE_TURNSTILE_SITE_KEY` in `web/.env` and **Secret Key** to `TURNSTILE_SECRET_KEY` in `backend/.env`.
-4. *Local Testing Keys*: Cloudflare provides dummy test keys that always pass:
-   - Sitekey: `1x00000000000000000000AA`
-   - Secret: `1x0000000000000000000000000000000AA`
-
-#### Resend Email Verification Setup
-1. Sign up at [Resend.com](https://resend.com) and create an API key with sending permissions.
-2. Verify your sending domain or use test domains in sandbox mode.
-3. Set `RESEND_API_KEY=re_...` in your server environment.
+#### One-Team-Per-Player Policy
+To prevent team spoofing and maintain clean identity recognition:
+- Each user or verified Minecraft username can only belong to **one team at a time**.
+- If a player belongs to a team, they cannot create a second team until they leave or delete their existing team.
+- Team members can leave via `/api/v1/teams/:id/leave`.
+- Team owners can kick members via `/api/v1/teams/:id/members/:memberId`.
 
 ---
 
@@ -144,16 +140,18 @@ Copy `.env.example` to `.env` and configure:
 * `GET /api/v1/health` — Unauthenticated health check endpoint
 * `GET /api/v1/version` — API version and loader compatibility
 * `GET /api/v1/config` — System limits, allowed logo formats, and TTL
-* `POST /api/v1/auth/register` — Better Auth registration with Turnstile verification and rate limiting (10 req/15m)
-* `POST /api/v1/auth/login` — Better Auth authentication with Turnstile verification and rate limiting (10 req/15m)
+* `GET /api/v1/auth/me` — Current user profile, linked team, and auto-join trigger
 * `POST /api/v1/players/resolve` — High-efficiency batch player lookup
 * `GET /api/v1/teams` — Paginated directory of registered teams
 * `GET /api/v1/teams/:id` — Team details with ETag caching
-* `POST /api/v1/teams` — Authenticated team creation (requires verified email & Turnstile)
+* `POST /api/v1/teams` — Authenticated team creation (enforces 1-team rule)
 * `PATCH /api/v1/teams/:id` — Update team appearance, prefix, and colors (Owner/Admin only)
+* `POST /api/v1/teams/:id/leave` — Non-owner member leaves the team
+* `DELETE /api/v1/teams/:id/members/:memberId` — Kick a member from the team (Owner/Admin only)
 * `POST /api/v1/teams/:id/logo` — Upload team logo (magic byte validated PNG/WebP, Owner/Admin only)
 * `POST /api/v1/teams/:id/members` — Add member to team (Owner/Admin only)
 * `POST /api/v1/teams/:id/verify` — Generate cracked/offline verification token (cryptographically secure hex, Owner/Admin only)
+* `POST /api/v1/teams/verify/confirm` — In-game universal verification endpoint
 * `POST /api/v1/teams/:id/verify/confirm` — Consume in-game verification token and verify team membership
 
 ---

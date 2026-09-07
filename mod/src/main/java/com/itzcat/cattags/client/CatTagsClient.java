@@ -56,7 +56,7 @@ public class CatTagsClient implements ClientModInitializer {
             if (tickCounter % 100 == 0) { // Check every 5 seconds (100 ticks)
                 List<CatTagsApiClient.PlayerQuery> unverifiedPlayers = new ArrayList<>();
                 for (AbstractClientPlayerEntity player : mc.world.getPlayers()) {
-                    String name = player.getGameProfile().getName();
+                    String name = player.getGameProfile().name();
                     if (cacheManager.getTeam(name, player.getUuid()) == null) {
                         unverifiedPlayers.add(new CatTagsApiClient.PlayerQuery(name, player.getUuid()));
                     }

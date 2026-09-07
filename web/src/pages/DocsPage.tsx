@@ -46,6 +46,17 @@ export const DocsPage: React.FC = () => {
             <p className="text-xs text-[#9CA3AF] leading-relaxed">
               Download the latest release jar (<code className="text-[#3B82F6] font-mono">cattags-1.0.0.jar</code>) from GitHub Releases and place it into your <code className="text-[#3B82F6] font-mono">mods</code> folder.
             </p>
+            <div className="pt-2">
+              <a
+                href="https://github.com/itz0cat/cattags/releases/latest"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-semibold transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download .jar</span>
+              </a>
+            </div>
           </div>
           <div className="p-5 rounded-xl bg-[#111827] border border-[#1F2937] space-y-2">
             <span className="text-xs font-bold text-[#3B82F6] uppercase">Step 3</span>
