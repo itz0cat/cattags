@@ -12,7 +12,7 @@ bin/
 out/
 *.class
 *.jar
-!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
 
 # Fabric / Loom
 .fabric/
@@ -45,6 +45,6 @@ Thumbs.db
 logs/
 *.log
 .cache/
-cache/
+/cache/
 tmp/
 backend/public/uploads/
